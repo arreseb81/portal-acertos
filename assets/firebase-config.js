@@ -11,10 +11,10 @@
 // ============================================================
 
 export const firebaseConfig = {
-  apiKey: "COLE_AQUI",
-  authDomain: "COLE_AQUI",
-  projectId: "COLE_AQUI",
-  storageBucket: "COLE_AQUI",
-  messagingSenderId: "COLE_AQUI",
-  appId: "COLE_AQUI"
+  apiKey: "AIzaSyBIqbEa5hzdGJqfJh_wsFIEUzxZEzdokro",
+  authDomain: "portal-acertos-servidores.firebaseapp.com",
+  projectId: "portal-acertos-servidores",
+  storageBucket: "portal-acertos-servidores.firebasestorage.app",
+  messagingSenderId: "509768908219",
+  appId: "1:509768908219:web:04ea4aae10c01c6faad89e"
 };
