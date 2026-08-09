@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Portal de Acertos de Contas — DIGEP/IBRAM</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,500;8..60,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:#16324F;
+    --slate:#3D5A73;
+    --gold:#B8912B;
+    --paper:#F4F2ED;
+    --paper-dark:#EAE6DC;
+    --ink:#1B1B18;
+    --ink-soft:#5B5B54;
+    --line:#D8D3C6;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'IBM Plex Sans', sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  header.top{
+    background:var(--navy);
+    color:#fff;
+    padding:2.2rem 1.5rem 2rem;
+    border-bottom:4px solid var(--gold);
+  }
+  .top-inner{
+    max-width:960px;
+    margin:0 auto;
+  }
+  .eyebrow{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:0.72rem;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    color:#C9D3DC;
+    margin-bottom:0.6rem;
+  }
+  h1{
+    font-family:'Source Serif 4', serif;
+    font-weight:600;
+    font-size:1.9rem;
+    margin:0 0 0.4rem;
+    letter-spacing:-0.01em;
+  }
+  .top-sub{
+    color:#C9D3DC;
+    font-size:0.95rem;
+    max-width:52ch;
+    line-height:1.5;
+  }
+  main{
+    max-width:960px;
+    margin:0 auto;
+    padding:2.4rem 1.5rem 4rem;
+  }
+  .status-bar{
+    display:flex;
+    align-items:center;
+    gap:0.6rem;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:0.78rem;
+    color:var(--ink-soft);
+    padding:0.7rem 1rem;
+    background:var(--paper-dark);
+    border:1px solid var(--line);
+    border-radius:4px;
+    margin-bottom:2rem;
+  }
+  .dot{width:8px;height:8px;border-radius:50%;background:#B23B3B;flex-shrink:0;}
+  .dot.ok{background:#3E7A4C;}
+  .grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:1.1rem;
+  }
+  @media(max-width:700px){ .grid{grid-template-columns:1fr;} }
+  a.card{
+    display:block;
+    text-decoration:none;
+    color:inherit;
+    background:#fff;
+    border:1px solid var(--line);
+    border-left:4px solid var(--slate);
+    border-radius:6px;
+    padding:1.4rem 1.5rem;
+    transition:border-color .15s ease, transform .15s ease;
+  }
+  a.card:hover{
+    border-left-color:var(--gold);
+    transform:translateY(-2px);
+  }
+  a.card:focus-visible{
+    outline:2px solid var(--gold);
+    outline-offset:2px;
+  }
+  .card-code{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:0.72rem;
+    letter-spacing:0.08em;
+    color:var(--slate);
+    background:var(--paper-dark);
+    display:inline-block;
+    padding:0.2rem 0.5rem;
+    border-radius:3px;
+    margin-bottom:0.7rem;
+  }
+  .card-title{
+    font-family:'Source Serif 4', serif;
+    font-size:1.15rem;
+    font-weight:600;
+    margin:0 0 0.4rem;
+  }
+  .card-desc{
+    font-size:0.88rem;
+    color:var(--ink-soft);
+    line-height:1.5;
+    margin:0;
+  }
+  footer{
+    max-width:960px;
+    margin:0 auto;
+    padding:1.5rem 1.5rem 3rem;
+    font-size:0.78rem;
+    color:var(--ink-soft);
+    border-top:1px solid var(--line);
+    margin-top:1rem;
+  }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="eyebrow">DIGEP · ASPAG — IBRAM-DF</div>
+    <h1>Portal de Acertos de Contas</h1>
+    <p class="top-sub">Ferramentas de cálculo para os quatro tipos de acerto. Selecione o módulo correspondente ao vínculo do servidor.</p>
+  </div>
+</header>
+
+<main>
+  <div class="status-bar" id="conn-status">
+    <span class="dot" id="conn-dot"></span>
+    <span id="conn-text">verificando conexão com o banco de dados…</span>
+  </div>
+
+  <div class="grid">
+    <a class="card" href="modulos/brigadistas.html">
+      <span class="card-code">GRUPO 54</span>
+      <h2 class="card-title">Brigadistas</h2>
+      <p class="card-desc">Acerto de contas para bombeiros civis / brigadistas temporários.</p>
+    </a>
+
+    <a class="card" href="modulos/comissionado-sem-vinculo.html">
+      <span class="card-code">CC · SEM VÍNCULO</span>
+      <h2 class="card-title">Comissionado sem vínculo</h2>
+      <p class="card-desc">Servidor ocupante de cargo em comissão sem vínculo efetivo com o GDF.</p>
+    </a>
+
+    <a class="card" href="modulos/comissionado-com-vinculo.html">
+      <span class="card-code">CC · COM VÍNCULO</span>
+      <h2 class="card-title">Comissionado com vínculo</h2>
+      <p class="card-desc">Servidor efetivo em exercício de cargo em comissão.</p>
+    </a>
+
+    <a class="card" href="modulos/efetivos.html">
+      <span class="card-code">EFETIVO</span>
+      <h2 class="card-title">Servidores efetivos</h2>
+      <p class="card-desc">Acerto de contas para servidores do quadro efetivo do GDF.</p>
+    </a>
+  </div>
+</main>
+
+<footer>
+  Uso interno — IBRAM-DF. Os dados salvos ficam vinculados à sua conta de acesso.
+</footer>
+
+<script type="module">
+  import { checkConnection } from './assets/firebase-init.js';
+  checkConnection().then(ok => {
+    const dot = document.getElementById('conn-dot');
+    const text = document.getElementById('conn-text');
+    if (ok) {
+      dot.classList.add('ok');
+      text.textContent = 'conectado ao banco de dados';
+    } else {
+      text.textContent = 'sem conexão — configure assets/firebase-config.js';
+    }
+  });
+</script>
+
+</body>
+</html>

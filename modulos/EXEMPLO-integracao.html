@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Exemplo de integração — não é um módulo real</title>
+<style>
+  body{ font-family:'IBM Plex Sans',Arial,sans-serif; max-width:640px; margin:2rem auto; padding:0 1rem; color:#1B1B18; }
+  h1{ font-size:1.2rem; }
+  label{ display:block; margin-top:0.8rem; font-size:0.85rem; }
+  input{ padding:0.4rem; width:100%; box-sizing:border-box; }
+  button{ margin-top:1rem; padding:0.5rem 1rem; }
+  #lista{ margin-top:2rem; font-size:0.85rem; }
+  #lista div{ padding:0.5rem 0; border-bottom:1px solid #ddd; }
+  code{ background:#eee; padding:0.1rem 0.3rem; border-radius:3px; }
+</style>
+</head>
+<body>
+
+<!--
+  ESTE ARQUIVO É SÓ PARA VOCÊ COPIAR O PADRÃO.
+  Não é o Acerto_Brigadistas_1_25.html de verdade.
+  O que importa aqui são as 3 partes marcadas com comentário:
+    1) exigir login no topo
+    2) o botão "Salvar" chamando salvarAcerto()
+    3) a lista de acertos salvos usando listarAcertos()
+  Você replica essas 3 partes dentro de cada um dos seus 4 HTMLs reais.
+-->
+
+<h1>Exemplo — Acerto de Brigadista (protótipo de integração)</h1>
+
+<label>Matrícula</label>
+<input id="matricula" placeholder="17281830">
+
+<label>Nome do servidor</label>
+<input id="nome" placeholder="Nome completo">
+
+<label>Valor líquido do acerto (R$)</label>
+<input id="valor" type="number" step="0.01" placeholder="0,00">
+
+<button id="btn-salvar">Salvar acerto</button>
+<p id="status"></p>
+
+<div id="lista"></div>
+
+<script type="module">
+  // 1) EXIGIR LOGIN — se ninguém logado, manda pra tela de login
+  import { exigirLogin, salvarAcerto, listarAcertos } from '../assets/firebase-init.js';
+
+  const TIPO = 'brigadista'; // troque para o tipo certo em cada módulo
+
+  exigirLogin(async (usuario) => {
+    document.getElementById('status').textContent = `Logado como ${usuario.email}`;
+    await atualizarLista();
+  });
+
+  // 2) BOTÃO SALVAR — pega os campos da tela e grava no banco
+  document.getElementById('btn-salvar').addEventListener('click', async () => {
+    const dados = {
+      matricula: document.getElementById('matricula').value,
+      nome: document.getElementById('nome').value,
+      valor: parseFloat(document.getElementById('valor').value || '0')
+      // aqui você acrescenta todos os outros campos que sua
+      // calculadora já produz: rubricas, avos, INSS, etc.
+    };
+
+    document.getElementById('status').textContent = 'Salvando...';
+    await salvarAcerto(TIPO, dados);
+    document.getElementById('status').textContent = 'Acerto salvo com sucesso.';
+    await atualizarLista();
+  });
+
+  // 3) LISTAR — mostra os acertos já salvos desse tipo
+  async function atualizarLista() {
+    const acertos = await listarAcertos(TIPO);
+    const div = document.getElementById('lista');
+    div.innerHTML = '<strong>Acertos salvos:</strong>';
+    acertos.forEach(a => {
+      div.innerHTML += `<div>Matrícula <code>${a.dados.matricula}</code> —
+        ${a.dados.nome} — R$ ${a.dados.valor.toFixed(2)}</div>`;
+    });
+  }
+</script>
+
+</body>
+</html>

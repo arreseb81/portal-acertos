@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Entrar — Portal de Acertos</title>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@600&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{ --navy:#16324F; --gold:#B8912B; --paper:#F4F2ED; --line:#D8D3C6; --ink:#1B1B18; }
+  body{
+    margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
+    background:var(--paper); font-family:'IBM Plex Sans',sans-serif; color:var(--ink);
+  }
+  .box{
+    background:#fff; border:1px solid var(--line); border-top:4px solid var(--navy);
+    border-radius:6px; padding:2rem 2.2rem; width:100%; max-width:340px;
+  }
+  h1{ font-family:'Source Serif 4',serif; font-size:1.3rem; margin:0 0 1.3rem; }
+  label{ display:block; font-size:0.82rem; margin:0.9rem 0 0.3rem; color:#5B5B54; }
+  input{
+    width:100%; padding:0.55rem 0.7rem; border:1px solid var(--line); border-radius:4px;
+    font-size:0.92rem; font-family:inherit;
+  }
+  button{
+    margin-top:1.4rem; width:100%; padding:0.65rem; border:none; border-radius:4px;
+    background:var(--navy); color:#fff; font-size:0.92rem; font-weight:500; cursor:pointer;
+  }
+  button:hover{ background:#0F2438; }
+  #erro{ color:#B23B3B; font-size:0.82rem; margin-top:0.8rem; min-height:1.2em; }
+</style>
+</head>
+<body>
+  <form class="box" id="form-login">
+    <h1>Portal de Acertos de Contas</h1>
+    <label for="email">E-mail</label>
+    <input id="email" type="email" required autocomplete="username">
+    <label for="senha">Senha</label>
+    <input id="senha" type="password" required autocomplete="current-password">
+    <button type="submit">Entrar</button>
+    <div id="erro"></div>
+  </form>
+
+  <script type="module">
+    import { login } from './assets/firebase-init.js';
+
+    const form = document.getElementById('form-login');
+    const erro = document.getElementById('erro');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      erro.textContent = '';
+      const email = document.getElementById('email').value;
+      const senha = document.getElementById('senha').value;
+      try {
+        await login(email, senha);
+        window.location.href = '/index.html';
+      } catch (err) {
+        erro.textContent = 'E-mail ou senha incorretos.';
+      }
+    });
+  </script>
+</body>
+</html>
