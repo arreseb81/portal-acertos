@@ -19,6 +19,8 @@ import {
   getFirestore,
   collection,
   addDoc,
+  deleteDoc,
+  doc,
   query,
   where,
   orderBy,
@@ -109,3 +111,5 @@ export async function listarTodos() {
   const snap = await getDocs(q); 
   return snap.docs.map(d => ({ id: d.id, ...d.data() })); 
 }
+export function observarLogin(callback) { onAuthStateChanged(auth, callback); } 
+export async function excluirAcerto(id) { await deleteDoc(doc(db, "acertos", id)); }
