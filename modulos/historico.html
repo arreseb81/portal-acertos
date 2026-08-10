@@ -101,7 +101,11 @@
       <div class="eyebrow">DIGEP · ASPAG — IBRAM-DF</div>
       <h1>Histórico de Acertos</h1>
     </div>
-    <a class="voltar" href="../index.html">&larr; voltar ao portal</a>
+    <div style="display:flex;gap:1rem;align-items:center;">
+      <span id="login-text-h" style="color:#C9D3DC;font-size:0.82rem;"></span>
+      <a class="voltar" href="#" id="btn-sair-h">Sair</a>
+      <a class="voltar" href="../index.html">&larr; voltar ao portal</a>
+    </div>
   </div>
 </header>
 
@@ -163,6 +167,7 @@
 
     <div class="painel-acoes">
       <button class="principal" id="btn-imprimir-detalhe">Imprimir esta tela</button>
+      <button id="btn-excluir-detalhe" style="color:var(--red);border-color:var(--red);">Excluir este acerto</button>
       <button id="btn-fechar-2">Fechar</button>
     </div>
 
@@ -171,7 +176,7 @@
 </div>
 
 <script type="module">
-  import { exigirLogin, listarTodos } from '../assets/firebase-init.js';
+  import { exigirLogin, listarTodos, excluirAcerto, logout } from '../assets/firebase-init.js';
 
   const TIPO_LABEL = {
     brigadista: 'GRUPO 54',
@@ -187,9 +192,17 @@
   };
 
   let todosAcertos = [];
+  let registroSelecionado = null;
 
-  exigirLogin(async () => {
+  exigirLogin(async (usuario) => {
+    document.getElementById('login-text-h').textContent = usuario.email;
     await carregar();
+  });
+
+  document.getElementById('btn-sair-h').addEventListener('click', async (e) => {
+    e.preventDefault();
+    await logout();
+    window.location.href = '../login.html';
   });
 
   async function carregar() {
@@ -259,6 +272,7 @@
   }
 
   function abrirDetalhe(registro) {
+    registroSelecionado = registro;
     const n = normalizar(registro);
 
     document.getElementById('d-badge').textContent = TIPO_NOME[registro.tipo] || registro.tipo;
@@ -298,6 +312,23 @@
     if (e.target.id === 'overlay') fecharDetalhe();
   });
   document.getElementById('btn-imprimir-detalhe').addEventListener('click', () => window.print());
+
+  document.getElementById('btn-excluir-detalhe').addEventListener('click', async () => {
+    if (!registroSelecionado) return;
+    const n = normalizar(registroSelecionado);
+    const confirmou = window.confirm(
+      `Tem certeza que deseja excluir este acerto?\n\nMatrícula: ${n.matricula}\nNome: ${n.nome}\n\nEssa ação não pode ser desfeita.`
+    );
+    if (!confirmou) return;
+
+    try {
+      await excluirAcerto(registroSelecionado.id);
+      fecharDetalhe();
+      await carregar();
+    } catch (err) {
+      alert('Erro ao excluir: ' + err.message);
+    }
+  });
 
   document.getElementById('f-tipo').addEventListener('change', renderizarLista);
   document.getElementById('f-busca').addEventListener('input', renderizarLista);
