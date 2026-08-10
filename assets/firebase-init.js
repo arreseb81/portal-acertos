@@ -63,7 +63,7 @@ export function logout() {
 export function exigirLogin(callback) {
   onAuthStateChanged(auth, (user) => {
     if (!user) {
-      window.location.href = "../login.html"
+      window.location.href = "../login.html";
     } else {
       callback(user);
     }
