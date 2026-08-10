@@ -104,3 +104,8 @@ export async function listarAcertos(tipo) {
   const snap = await getDocs(q);
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
 }
+export async function listarTodos() { 
+  const q = query(collection(db, "acertos"), orderBy("criadoEm", "desc")); 
+  const snap = await getDocs(q); 
+  return snap.docs.map(d => ({ id: d.id, ...d.data() })); 
+}
