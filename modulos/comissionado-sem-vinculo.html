@@ -358,6 +358,7 @@ em{font-style:italic}
           <button class="btn btn-primary" id="btn-atualizar-resumo">Atualizar Resumo</button>
           <button class="btn btn-secondary" id="btn-exportar-resumo">Exportar JSON</button>
           <button class="btn btn-success" id="btn-imprimir-resumo">🖨️ Imprimir / Gerar PDF</button>
+           <button class="btn btn-secondary" id="salvar-portal" type="button">Salvar no Portal</button> <p id="salvar-portal-status" style="margin-top:8px;font-size:0.85rem;"></p>
         </div>
       </div></div>
     </div>
@@ -2646,6 +2647,57 @@ $('#btn-imprimir-resumo').addEventListener('click', () => {
 
 /* Garante limpeza tanto se o print foi concluído quanto se foi cancelado */
 window.addEventListener('afterprint', limparImpressao);
+</script>
+   <script type="module">
+  import { exigirLogin, salvarAcerto } from '../assets/firebase-init.js';
+
+  exigirLogin((usuario) => {
+    console.log('Logado como', usuario.email);
+  });
+
+  function coletarResumo() {
+    const linhas = [];
+    document.querySelectorAll('#resumo-table tbody tr').forEach((tr) => {
+      const tds = tr.querySelectorAll('td');
+      if (tds.length >= 3) {
+        linhas.push({
+          codigo: tds[0].textContent.trim(),
+          descricao: tds[1].textContent.trim(),
+          valor: tds[2].textContent.trim()
+        });
+      }
+    });
+    return linhas;
+  }
+
+  document.getElementById('salvar-portal').addEventListener('click', async () => {
+    const status = document.getElementById('salvar-portal-status');
+    const dados = {
+      nome: document.getElementById('srv-nome').value,
+      matricula: document.getElementById('srv-matricula').value,
+      processoSei: document.getElementById('srv-sei').value,
+      qtdCargos: document.getElementById('srv-qtd-cargos').value,
+      totalGeral: document.getElementById('resumo-total').textContent.trim(),
+      resumo: coletarResumo()
+    };
+
+    if (!dados.matricula) {
+      status.textContent = 'Preencha ao menos a matrícula antes de salvar.';
+      status.style.color = '#B23B3B';
+      return;
+    }
+
+    status.textContent = 'Salvando...';
+    status.style.color = '';
+    try {
+      await salvarAcerto('comissionado_sem_vinculo', dados);
+      status.textContent = 'Acerto salvo no portal com sucesso.';
+      status.style.color = '#3E7A4C';
+    } catch (err) {
+      status.textContent = 'Erro ao salvar: ' + err.message;
+      status.style.color = '#B23B3B';
+    }
+  });
 </script>
 </body>
 </html>
