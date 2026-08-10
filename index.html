@@ -151,6 +151,10 @@
     <span class="dot" id="conn-dot"></span>
     <span id="conn-text">verificando conexão com o banco de dados…</span>
   </div>
+  <div class="status-bar" id="login-bar" style="display:none;"> 
+    <span class="dot ok"></span> <span id="login-text"></span> 
+    <a href="#" id="btn-sair" style="margin-left:auto;color:var(--slate);text-decoration:underline;">Sair</a> 
+  </div>
 
   <div class="grid">
     <a class="card" href="modulos/brigadistas.html">
@@ -188,7 +192,7 @@
 </footer>
 
 <script type="module">
-  import { checkConnection } from './assets/firebase-init.js';
+  import { checkConnection, observarLogin, logout } from './assets/firebase-init.js';
   checkConnection().then(ok => {
     const dot = document.getElementById('conn-dot');
     const text = document.getElementById('conn-text');
@@ -199,6 +203,9 @@
       text.textContent = 'sem conexão — configure assets/firebase-config.js';
     }
   });
+  observarLogin((usuario) => { 
+    const barra = document.getElementById('login-bar'); 
+    if (usuario) { barra.style.display = 'flex'; document.getElementById('login-text').textContent = 'logado como ' + usuario.email; } }); document.getElementById('btn-sair').addEventListener('click', async (e) => { e.preventDefault(); await logout(); window.location.reload(); });
 </script>
 
 </body>
