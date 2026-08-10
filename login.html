@@ -53,7 +53,7 @@
       const senha = document.getElementById('senha').value;
       try {
         await login(email, senha);
-        window.location.href = '/index.html';
+        window.location.href = './index.html';
       } catch (err) {
         erro.textContent = 'E-mail ou senha incorretos.';
       }
