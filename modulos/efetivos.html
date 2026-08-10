@@ -591,6 +591,7 @@
       <button class="btn-danger" id="limpar-dados">LIMPAR DADOS</button>
       <button class="btn-clear" id="exportar-dados">EXPORTAR DADOS</button>
       <button class="btn-secondary" id="imprimir-pdf">IMPRIMIR / SALVAR PDF</button>
+      <button class="btn-secondary" id="salvar-portal" type="button">SALVAR NO PORTAL</button> <p id="salvar-portal-status" style="margin-top:8px;font-size:0.85rem;"></p>
     </div>
   </section>
   </div><!-- /tab-panel-2 -->
@@ -2425,6 +2426,60 @@ OBSERVAÇÕES:
 
   window.addEventListener("load", init);
 })();
+</script>
+  <script type="module">
+  import { exigirLogin, salvarAcerto } from '../assets/firebase-init.js';
+
+  exigirLogin((usuario) => {
+    console.log('Logado como', usuario.email);
+  });
+
+  function coletarLinhasResultado() {
+    const linhas = [];
+    document.querySelectorAll('#tabela-resultados-completa tbody tr').forEach((tr) => {
+      if (tr.style.display === 'none') return;
+      const tds = tr.querySelectorAll('td');
+      if (tds.length >= 3) {
+        linhas.push({
+          codigo: tds[0].textContent.trim(),
+          descricao: tds[1].textContent.trim(),
+          valor: tds[2].textContent.trim()
+        });
+      }
+    });
+    return linhas;
+  }
+
+  document.getElementById('salvar-portal').addEventListener('click', async () => {
+    const status = document.getElementById('salvar-portal-status');
+    const dados = {
+      nome: document.getElementById('nome').value,
+      matricula: document.getElementById('matricula').value,
+      cargo: document.getElementById('cargo').value,
+      nascimento: document.getElementById('nascimento').value,
+      admissao: document.getElementById('admissao').value,
+      exoneracao: document.getElementById('exoneracao').value,
+      totalFinal: document.getElementById('total-final-valor').textContent.trim(),
+      rubricas: coletarLinhasResultado()
+    };
+
+    if (!dados.matricula) {
+      status.textContent = 'Preencha ao menos a matrícula antes de salvar.';
+      status.style.color = '#B23B3B';
+      return;
+    }
+
+    status.textContent = 'Salvando...';
+    status.style.color = '';
+    try {
+      await salvarAcerto('efetivo', dados);
+      status.textContent = 'Acerto salvo no portal com sucesso.';
+      status.style.color = '#3E7A4C';
+    } catch (err) {
+      status.textContent = 'Erro ao salvar: ' + err.message;
+      status.style.color = '#B23B3B';
+    }
+  });
 </script>
 </body>
 </html>
