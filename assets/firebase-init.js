@@ -115,4 +115,8 @@ export async function listarTodos() {
 }
 export function observarLogin(callback) { onAuthStateChanged(auth, callback); } 
 export async function excluirAcerto(id) { await deleteDoc(doc(db, "acertos", id)); }
-export async function buscarAcerto(id) { const snap = await getDoc(doc(db, "acertos", id)); return snap.exists() ? { id: snap.id, ...snap.data() } : null; } export async function atualizarAcerto(id, tipo, dados) { await setDoc(doc(db, "acertos", id), { tipo, dados, atualizadoEm: serverTimestamp() }, { merge: true }); }
+export async function buscarAcerto(id) { 
+  const snap = await getDoc(doc(db, "acertos", id)); 
+  return snap.exists() ? { id: snap.id, ...snap.data() } : null; } 
+export async function atualizarAcerto(id, tipo, dados) { 
+  await setDoc(doc(db, "acertos", id), { tipo, dados, atualizadoEm: serverTimestamp() }, { merge: true }); }
