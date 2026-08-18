@@ -120,3 +120,9 @@ export async function buscarAcerto(id) {
   return snap.exists() ? { id: snap.id, ...snap.data() } : null; } 
 export async function atualizarAcerto(id, tipo, dados) { 
   await setDoc(doc(db, "acertos", id), { tipo, dados, atualizadoEm: serverTimestamp() }, { merge: true }); }
+export async function obterEstadoModulo(chave) { 
+  const snap = await getDoc(doc(db, "estado_modulos", chave)); 
+  return snap.exists() ? snap.data() : null; } 
+export async function salvarEstadoModulo(chave, dados) { 
+  await setDoc(doc(db, "estado_modulos", chave), dados); 
+  return true; }
