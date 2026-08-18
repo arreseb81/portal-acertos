@@ -1,0 +1,1301 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Registro de Substituições — Cargos Comissionados</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+  :root{
+    --azul-900:#0f2942;
+    --azul-800:#173a5e;
+    --azul-700:#1f4e79;
+    --azul-500:#2f6fa5;
+    --azul-100:#e7eef5;
+    --cinza-900:#22282f;
+    --cinza-600:#5b6774;
+    --cinza-300:#d4dae1;
+    --cinza-100:#f4f6f8;
+    --branco:#ffffff;
+    --verde:#1f7a4d;
+    --vermelho:#b3261e;
+    --sombra: 0 1px 2px rgba(15,41,66,.08), 0 4px 12px rgba(15,41,66,.06);
+    --radius:8px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family: "Segoe UI", Arial, Helvetica, sans-serif;
+    background: var(--cinza-100);
+    color: var(--cinza-900);
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap{max-width:100%; padding:20px 22px 60px;}
+
+  header.app-header{
+    background: linear-gradient(135deg,var(--azul-900),var(--azul-700));
+    color:#fff;
+    border-radius: var(--radius);
+    padding:20px 24px;
+    margin-bottom:18px;
+    box-shadow: var(--sombra);
+    display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;
+  }
+  header.app-header h1{margin:0; font-size:1.25rem; font-weight:700; letter-spacing:.2px;}
+  header.app-header p{margin:4px 0 0; font-size:.82rem; color:#cfe0ef;}
+  .status-pill{
+    font-size:.72rem; background:rgba(255,255,255,.14); padding:6px 12px; border-radius:999px;
+    display:flex; align-items:center; gap:6px; white-space:nowrap;
+  }
+  .status-dot{width:8px; height:8px; border-radius:50%; background:#7CE38B;}
+  .status-dot.saving{background:#F2C94C;}
+  .status-dot.error{background:#F25C4C;}
+
+  .panel{
+    background:#fff; border:1px solid var(--cinza-300); border-radius: var(--radius);
+    box-shadow: var(--sombra); margin-bottom:18px; overflow:hidden;
+  }
+  .panel-head{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:12px 16px; background:var(--azul-100); border-bottom:1px solid var(--cinza-300);
+    cursor:pointer; user-select:none;
+  }
+  .panel-head h2{margin:0; font-size:.95rem; color:var(--azul-900);}
+  .panel-head .hint{font-size:.75rem; color:var(--cinza-600); font-weight:400;}
+  .chevron{transition:transform .15s ease; font-size:.8rem; color:var(--azul-700);}
+  .panel.collapsed .chevron{transform:rotate(-90deg);}
+  .panel.collapsed .panel-body{display:none;}
+  .panel-body{padding:14px 16px;}
+
+  table.cargos{width:100%; border-collapse:collapse; font-size:.85rem;}
+  table.cargos th{
+    text-align:left; font-size:.7rem; text-transform:uppercase; letter-spacing:.03em;
+    color:var(--cinza-600); padding:6px 8px; border-bottom:2px solid var(--cinza-300);
+  }
+  table.cargos td{padding:4px 8px; border-bottom:1px solid var(--cinza-300);}
+  table.cargos input{width:100%; border:1px solid transparent; background:transparent; padding:5px 6px; border-radius:5px; font-size:.85rem; font-family:inherit;}
+  table.cargos input:hover{border-color:var(--cinza-300);}
+  table.cargos input:focus{outline:none; border-color:var(--azul-500); background:#fff;}
+  table.cargos input[readonly]{color:var(--azul-800); font-weight:700; background:var(--azul-100);}
+  table.cargos tr:hover{background:var(--cinza-100);}
+
+  .btn{
+    border:1px solid var(--cinza-300); background:#fff; color:var(--cinza-900);
+    padding:7px 12px; border-radius:6px; font-size:.8rem; cursor:pointer; font-weight:600;
+    display:inline-flex; align-items:center; gap:6px; white-space:nowrap;
+  }
+  .btn:hover{background:var(--cinza-100);}
+  .btn-primary{background:var(--azul-700); border-color:var(--azul-700); color:#fff;}
+  .btn-primary:hover{background:var(--azul-800);}
+  .btn-danger{color:var(--vermelho); border-color:#f0c9c6;}
+  .btn-danger:hover{background:#fdf0ef;}
+  .btn-sm{padding:4px 9px; font-size:.72rem; border-radius:5px;}
+
+  .table-scroll{overflow-x:auto; border-radius:var(--radius);}
+  table.subst{border-collapse:separate; border-spacing:0; width:100%; min-width:2900px; font-size:.78rem;}
+  table.subst thead th{
+    position:sticky; top:0; z-index:3;
+    background:var(--azul-800); color:#fff; font-weight:600;
+    padding:9px 8px; text-align:left; border-right:1px solid rgba(255,255,255,.12);
+    font-size:.68rem; text-transform:uppercase; letter-spacing:.03em; white-space:nowrap;
+  }
+  table.subst thead tr.group th{background:var(--azul-900); font-size:.66rem; text-align:center;}
+  table.subst tbody td{
+    padding:4px 5px; border-bottom:1px solid var(--cinza-300); border-right:1px solid var(--cinza-300);
+    background:#fff; vertical-align:middle;
+  }
+  table.subst tbody tr:nth-child(even) td{background:#fafbfc;}
+  table.subst tbody tr:hover td{background:var(--azul-100);}
+  table.subst input, table.subst select{
+    width:100%; min-width:74px; border:1px solid transparent; background:transparent;
+    padding:6px 6px; border-radius:5px; font-size:.78rem; font-family:inherit; color:var(--cinza-900);
+  }
+  table.subst input:hover, table.subst select:hover{border-color:var(--cinza-300);}
+  table.subst input:focus, table.subst select:focus{outline:none; border-color:var(--azul-500); background:#fff;}
+  table.subst input[readonly]{color:var(--azul-800); font-weight:700; background:var(--azul-100)!important;}
+  table.subst input.wide{min-width:150px;}
+  table.subst input.date{min-width:118px;}
+  table.subst input.num{min-width:64px; text-align:right;}
+  .money-wrap{display:flex; align-items:center; gap:3px; min-width:96px;}
+  .money-wrap .rs-prefix{font-size:.68rem; color:var(--azul-700); font-weight:700; flex-shrink:0;}
+  table.cargos .money-wrap{min-width:auto;}
+  td.col-num{position:sticky; left:0; background:#f0f3f6!important; text-align:center; font-weight:700; color:var(--cinza-600); z-index:1; min-width:34px;}
+  td.col-acoes{position:sticky; right:0; background:#fff!important; z-index:1; min-width:118px;}
+  table.subst tbody tr:nth-child(even) td.col-acoes{background:#fafbfc!important;}
+  table.subst tbody tr:hover td.col-acoes, table.subst tbody tr:hover td.col-num{background:var(--azul-100)!important;}
+  .acoes-cell{display:flex; gap:5px;}
+  .warn-badge{display:block; font-size:.62rem; background:#fdecea; color:var(--vermelho); padding:1px 4px; border-radius:4px; margin-top:1px; white-space:nowrap;}
+
+  .toolbar{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:12px 16px; flex-wrap:wrap; border-top:1px solid var(--cinza-300); background:var(--cinza-100);}
+  .toolbar .left{display:flex; gap:8px; flex-wrap:wrap;}
+  .totais{font-size:.78rem; color:var(--cinza-600);}
+  .totais b{color:var(--azul-900);}
+
+  footer.legend{font-size:.75rem; color:var(--cinza-600); padding:0 4px; line-height:1.6;}
+  footer.legend b{color:var(--cinza-900);}
+
+  #print-area{display:none;}
+
+  @media print{
+    body *{visibility:hidden;}
+    #print-area, #print-area *{visibility:visible;}
+    #print-area{display:block!important; position:absolute; top:0; left:0; width:100%; padding:18px 26px;}
+  }
+
+  .doc-title{text-align:center; margin-bottom:6px;}
+  .doc-title h2{margin:0; font-size:1.05rem; letter-spacing:.03em;}
+  .doc-title p{margin:2px 0 0; font-size:.78rem; color:#444;}
+  .doc-rule{border:none; border-top:2px solid #0f2942; margin:10px 0 16px;}
+  .doc-section{margin-bottom:14px;}
+  .doc-section h3{font-size:.82rem; text-transform:uppercase; letter-spacing:.04em; color:#0f2942; border-bottom:1px solid #ccc; padding-bottom:4px; margin:0 0 8px;}
+  .doc-grid{display:grid; grid-template-columns:1fr 1fr; gap:6px 24px; font-size:.85rem;}
+  .doc-grid .full{grid-column:1/-1;}
+  .doc-field label{display:block; font-size:.68rem; text-transform:uppercase; color:#666; letter-spacing:.03em;}
+  .doc-field div{font-size:.9rem; font-weight:600; padding-top:1px;}
+  .doc-valores{display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin-top:6px;}
+  .doc-valores .card{border:1px solid #ccc; border-radius:6px; padding:8px 10px;}
+  .doc-valores .card label{display:block; font-size:.62rem; text-transform:uppercase; color:#666;}
+  .doc-valores .card div{font-size:.95rem; font-weight:700; color:#0f2942; margin-top:2px;}
+  .doc-sign{margin-top:46px; display:grid; grid-template-columns:1fr 1fr; gap:40px; text-align:center; font-size:.8rem;}
+  .doc-sign .line{border-top:1px solid #444; padding-top:6px;}
+
+  textarea.paste-box{
+    width:100%; min-height:150px; font-family: Consolas, "Courier New", monospace; font-size:.75rem;
+    border:1px solid var(--cinza-300); border-radius:6px; padding:10px; resize:vertical;
+  }
+  .servidores-info{font-size:.78rem; color:var(--cinza-600); margin:8px 0;}
+  .servidores-info b{color:var(--azul-900);}
+  .search-box{width:100%; max-width:320px; padding:7px 10px; border:1px solid var(--cinza-300); border-radius:6px; font-size:.82rem; margin-bottom:8px;}
+  .servidores-scroll{max-height:420px; overflow-y:auto; border:1px solid var(--cinza-300); border-radius:6px;}
+  table.servidores{width:100%; border-collapse:collapse; font-size:.8rem;}
+  table.servidores thead th{position:sticky; top:0; background:var(--azul-100); text-align:left; font-size:.68rem; text-transform:uppercase; color:var(--cinza-600); padding:6px 8px; border-bottom:2px solid var(--cinza-300); z-index:1;}
+  table.servidores td{padding:3px 7px; border-bottom:1px solid var(--cinza-300);}
+  table.servidores input{width:100%; border:1px solid transparent; background:transparent; padding:4px 5px; border-radius:5px; font-size:.8rem; font-family:inherit;}
+  table.servidores input:hover{border-color:var(--cinza-300);}
+  table.servidores input:focus{outline:none; border-color:var(--azul-500); background:#fff;}
+  table.servidores tr:hover{background:var(--cinza-100);}
+  .parse-result{font-size:.78rem; margin-top:8px; padding:8px 10px; border-radius:6px;}
+  .parse-result.ok{background:#eaf6ee; color:var(--verde);}
+  .parse-result.warn{background:#fdecea; color:var(--vermelho);}
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --sidebar:#0F2A3D; --sidebar-hover:#17415C; --accent:#E8A33D; --teal:#1F6F62;
+    --paper:#F6F4EF; --ink:#1C2530; --ink-soft:#62707C; --line:#E4E0D6; --green:#2F8F5B; --red:#C1443B;
+  }
+  html, body{ background:var(--paper) !important; padding:0 !important; margin:0 !important; }
+  .shell{ display:flex; min-height:100vh; align-items:flex-start; }
+  .sidebar{
+    width:250px; flex-shrink:0; background:var(--sidebar); color:#EAF0F4;
+    display:flex; flex-direction:column; padding:1.6rem 1.1rem; min-height:100vh; font-family:'IBM Plex Sans',sans-serif;
+  }
+  .sidebar .brand{ padding:0 0.5rem 1rem; }
+  .sidebar .eyebrow{ font-family:'IBM Plex Mono',monospace; font-size:0.64rem; letter-spacing:0.12em; text-transform:uppercase; color:#8FA6B5; }
+  .sidebar h1.brand-title{ font-family:'Fraunces',serif !important; font-size:1.1rem; font-weight:600; color:#fff !important; margin:0.3rem 0 0 !important; text-align:left !important; }
+  .sidebar nav.menu{ display:flex; flex-direction:column; gap:0.25rem; margin-top:1rem; }
+  .sidebar nav.menu a{
+    display:flex; align-items:center; gap:0.65rem; text-decoration:none; color:#C9D6DE;
+    padding:0.55rem 0.6rem; border-radius:7px; font-size:0.84rem; font-weight:500; font-family:'IBM Plex Sans',sans-serif;
+  }
+  .sidebar nav.menu a:hover{ background:var(--sidebar-hover); color:#fff; }
+  .sidebar nav.menu a.ativo{ background:var(--sidebar-hover); color:#fff; }
+  .sidebar .selo{
+    width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    font-family:'IBM Plex Mono',monospace; font-size:0.6rem; font-weight:600; color:#fff; flex-shrink:0;
+  }
+  .sidebar .divisor{ height:1px; background:rgba(255,255,255,0.1); margin:0.6rem 0.5rem; }
+  .sidebar-footer{ margin-top:auto; padding:0.6rem; font-size:0.68rem; color:#7C93A2; line-height:1.5; font-family:'IBM Plex Sans',sans-serif; }
+
+  .main-area{ flex:1; min-width:0; }
+  .topbar{
+    display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;
+    padding:0.85rem 1.6rem; border-bottom:1px solid var(--line); background:#fff; font-family:'IBM Plex Sans',sans-serif;
+  }
+  .status-pill{ display:flex; align-items:center; gap:0.5rem; font-family:'IBM Plex Mono',monospace; font-size:0.74rem; color:var(--ink-soft); }
+  .dot{ width:7px; height:7px; border-radius:50%; background:var(--red); }
+  .dot.ok{ background:var(--green); }
+  .login-info{ display:none; align-items:center; gap:0.9rem; font-size:0.8rem; color:var(--ink-soft); }
+  .login-info a{ color:var(--teal); text-decoration:underline; font-weight:500; }
+
+  .conteudo-modulo{ padding:1.6rem 1.8rem 3rem; }
+
+  @media(max-width:840px){
+    .shell{ flex-direction:column; }
+    .sidebar{ width:100%; min-height:auto; }
+  }
+</style>
+</head>
+
+<body>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <a href="../index.html">
+      <img src="../assets/logo-ibram-h.png" alt="Brasília Ambiental" style="display:block;margin:0 auto 0.8rem;width:100%;max-width:170px;height:auto;background:#fff;border-radius:12px;padding:8px 12px;border:1.5px solid rgba(31,111,98,0.4);box-shadow:0 4px 14px -6px rgba(0,0,0,0.35);">
+      </a>
+      <div class="eyebrow">DIGEP · ASPAG — IBRAM-DF</div>
+      <h1 class="brand-title">Portal de Acertos</h1>
+    </div>
+    <nav class="menu">
+      <a href="brigadistas.html"><span class="selo" style="background:#8B0000;">G54</span> Brigadistas</a>
+      <a href="comissionado-sem-vinculo.html"><span class="selo" style="background:#6B21A8;">SV</span> Comissionado sem vínculo</a>
+      <a href="comissionado-com-vinculo.html"><span class="selo" style="background:#556B2F;">CV</span> Comissionado com vínculo</a>
+      <a href="efetivos.html"><span class="selo" style="background:#0B5394;">EF</span> Servidores efetivos</a>
+      <a href="substituicoes.html" class="ativo"><span class="selo" style="background:#2F6FA5;">SUB</span> Substituições</a>
+      <div class="divisor"></div>
+      <a href="historico.html"><span class="selo" style="background:#E8A33D;color:var(--sidebar);">⏱</span> Histórico de acertos</a>
+      <a href="legislacao.html"><span class="selo" style="background:#3D5A73;">§</span> Legislação</a>
+    </nav>
+    <div class="sidebar-footer">Uso interno — IBRAM-DF.<br>Os dados salvos ficam vinculados à sua conta de acesso.</div>
+  </aside>
+
+  <div class="main-area">
+    <div class="topbar">
+      <div class="status-pill"><span class="dot" id="conn-dot"></span><span id="conn-text">verificando conexão…</span></div>
+      <div class="login-info" id="login-info"><span id="login-text"></span><a href="#" id="btn-sair">Sair</a></div>
+    </div>
+    <div class="conteudo-modulo">
+<div class="wrap" id="app-root">
+
+  <header class="app-header">
+    <div>
+      <h1>Registro de Substituições — Cargos Comissionados</h1>
+      <p>Lançamento de gratificações por substituição, com 13º, férias e 1/3 proporcionais calculados automaticamente</p>
+    </div>
+    <div class="status-pill"><span class="status-dot" id="status-dot"></span><span id="status-text">Carregando dados da nuvem…</span></div>
+  </header>
+
+  <section class="panel collapsed" id="panel-servidores">
+    <div class="panel-head" onclick="togglePanel('panel-servidores')">
+      <h2>Base de servidores <span class="hint">— nome, matrícula, cargo e valores, usada para preencher a linha automaticamente</span></h2>
+      <span class="chevron">▾</span>
+    </div>
+    <div class="panel-body">
+      <p class="servidores-info" id="servidores-info"></p>
+
+      <details style="margin-bottom:14px;">
+        <summary style="cursor:pointer; font-size:.82rem; font-weight:600; color:var(--azul-800);">Atualizar a lista (colar novo relatório)</summary>
+        <p style="font-size:.78rem;color:var(--cinza-600);">
+          Cole abaixo o texto do relatório "ocupante por órgão" (mesmo formato do arquivo que você me enviou) sempre que precisar atualizar os cargos ocupados. Isso substitui a lista de servidores salva nesta ferramenta — não é preciso mexer no código.
+        </p>
+        <textarea class="paste-box" id="paste-servidores" placeholder="Cole aqui o texto completo do relatório de servidores..."></textarea>
+        <div style="margin-top:8px; display:flex; gap:8px; align-items:center;">
+          <button class="btn btn-primary btn-sm" onclick="processarColagem()">Processar e atualizar lista</button>
+          <button class="btn btn-sm" onclick="document.getElementById('paste-servidores').value=''">Limpar</button>
+        </div>
+        <div id="parse-result"></div>
+      </details>
+
+      <input class="search-box" id="busca-servidor" placeholder="Buscar por nome, matrícula ou cargo..." oninput="renderServidores()">
+      <div class="servidores-scroll">
+        <table class="servidores">
+          <thead>
+            <tr><th style="width:14%">Matrícula</th><th style="width:34%">Nome</th><th style="width:12%">Cargo</th><th style="width:16%">Vencimento</th><th style="width:16%">Representação</th><th style="width:8%"></th></tr>
+          </thead>
+          <tbody id="servidores-body"></tbody>
+        </table>
+      </div>
+      <div style="margin-top:10px;">
+        <button class="btn btn-sm" onclick="addServidor()">+ Adicionar servidor manualmente</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel collapsed" id="panel-cargos">
+    <div class="panel-head" onclick="togglePanel('panel-cargos')">
+      <h2>Tabela de valores de cargos <span class="hint">— vencimento e representação, conforme GDF/SEPLAG</span></h2>
+      <span class="chevron">▾</span>
+    </div>
+    <div class="panel-body">
+      <p style="font-size:.78rem;color:var(--cinza-600);margin-top:0;">
+        Valores importados do documento oficial da Subsecretaria de Gestão de Pessoas (vigência julho/2023). Edite se houver reajuste mais recente. "Remuneração" é calculada automaticamente (vencimento + representação) e exibida apenas como referência.
+      </p>
+      <table class="cargos" id="tbl-cargos">
+        <thead>
+          <tr>
+            <th style="width:22%">Cargo</th>
+            <th style="width:20%">Vencimento (R$)</th>
+            <th style="width:20%">Representação (R$)</th>
+            <th style="width:20%">Remuneração (calculado)</th>
+            <th style="width:18%"></th>
+          </tr>
+        </thead>
+        <tbody id="cargos-body"></tbody>
+      </table>
+      <div style="margin-top:10px;">
+        <button class="btn btn-sm" onclick="addCargo()">+ Adicionar cargo</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" id="panel-tabela">
+    <div class="panel-head" onclick="togglePanel('panel-tabela')">
+      <h2>Substituições lançadas</h2>
+      <span class="chevron">▾</span>
+    </div>
+    <div class="panel-body" style="padding:0;">
+      <div class="table-scroll" id="table-scroll">
+        <table class="subst">
+          <thead>
+            <tr class="group">
+              <th></th><th></th>
+              <th colspan="5">Substituto</th>
+              <th colspan="5">Substituído</th>
+              <th colspan="4">Período</th>
+              <th colspan="5">Valores da substituição</th>
+              <th colspan="3">Publicação (DODF)</th>
+              <th></th>
+            </tr>
+            <tr>
+              <th>Nº</th>
+              <th>Fator</th>
+              <th>Matrícula</th>
+              <th>Nome</th>
+              <th>Cargo</th>
+              <th>Vencimento</th>
+              <th>Representação</th>
+              <th>Matrícula</th>
+              <th>Nome</th>
+              <th>Cargo</th>
+              <th>Vencimento</th>
+              <th>Representação</th>
+              <th>Início</th>
+              <th>Fim</th>
+              <th>Dias</th>
+              <th>Avos</th>
+              <th>Diferença</th>
+              <th>Valor a receber</th>
+              <th>13º proporcional (20607)</th>
+              <th>Férias proporcionais (21480)</th>
+              <th>1/3 de férias (21485)</th>
+              <th>Nº do DODF</th>
+              <th>Data de publicação</th>
+              <th>Nº do processo</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="subst-body"></tbody>
+        </table>
+      </div>
+      <div class="toolbar">
+        <div class="left">
+          <button class="btn btn-primary" onclick="addRow()">+ Adicionar linha</button>
+          <button class="btn" onclick="exportarExcel()">📊 Exportar Excel</button>
+        </div>
+        <div class="totais" id="totais">0 substituições lançadas</div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="legend">
+    <p><b>Como os valores são calculados</b> — <b>Fator CV</b>: diferença = representação do substituído − representação do substituto. <b>Fator SV</b>: diferença = representação do substituído − (representação do substituto + vencimento do substituto). <b>Fator SVV</b>: diferença = (representação + vencimento do substituído) − (representação + vencimento do substituto). <b>Avos</b> são calculados automaticamente contando, em cada mês do período, se houve 15 dias ou mais de substituição naquele mês. <b>13º e férias proporcionais</b> = (diferença ÷ 12) × avos; <b>1/3 de férias</b> = férias proporcionais ÷ 3; <b>valor a receber no período</b> = diferença × (dias ÷ 30). Ao digitar o nome ou a matrícula do substituto/substituído, o sistema busca na base de servidores e preenche cargo e valores automaticamente — revise sempre antes de formalizar.</p>
+  </footer>
+
+</div>
+    </div>
+  </div>
+</div>
+
+<div id="print-area"></div>
+
+<script>
+/* ---------------- Dados embutidos: base de servidores (relatório GDF, referência Agosto/2026) ---------------- */
+
+const DEFAULT_SERVIDORES = [{"matricula": "17308542", "nome": "ANTONIO GUTEMBERG GOMES DE SOUZA", "cargo": "CDA-01", "venc": 4510.0, "repres": 18040.0}, {"matricula": "16946286", "nome": "POLLIANE SILVA BEZERRA", "cargo": "CNE-08", "venc": 979.0, "repres": 3915.0}, {"matricula": "17155827", "nome": "FRANCISCO FELIX DE SOUZA", "cargo": "CC-08", "venc": 735.0, "repres": 2940.0}, {"matricula": "1717578X", "nome": "RENATO LUIS PEREIRA QUEIROS", "cargo": "CC-07", "venc": 639.0, "repres": 2555.0}, {"matricula": "17175798", "nome": "GIULIA DICKMAN MOREIRA DOS REIS", "cargo": "CC-07", "venc": 639.0, "repres": 2555.0}, {"matricula": "16895274", "nome": "ANA CAROLINE PAIVA ANTUNES DE ALMEIDA OLIVEIRA", "cargo": "CC-06", "venc": 561.0, "repres": 2245.0}, {"matricula": "17319307", "nome": "ANDRE MACEDO SILVA", "cargo": "CC-06", "venc": 561.0, "repres": 2245.0}, {"matricula": "17194725", "nome": "SEBASTIAO BRASIL MARTINS", "cargo": "CC-05", "venc": 483.0, "repres": 1930.0}, {"matricula": "17285828", "nome": "DIEGO FRANCISCO FREITAS BARBOSA", "cargo": "CC-05", "venc": 483.0, "repres": 1930.0}, {"matricula": "17325005", "nome": "KAROLAYNE DE SOUZA DOS REIS", "cargo": "CC-04", "venc": 405.0, "repres": 1620.0}, {"matricula": "17118549", "nome": "AISLAN ALVES DA SILVA", "cargo": "CNE-03", "venc": 2589.0, "repres": 10355.0}, {"matricula": "17118840", "nome": "JANIZETE TEIXEIRA CHAVES", "cargo": "CC-07", "venc": 639.0, "repres": 2555.0}, {"matricula": "17118859", "nome": "RAFAEL SOUSA MENESES", "cargo": "CC-07", "venc": 639.0, "repres": 2555.0}, {"matricula": "17118727", "nome": "RIZEUDA FERREIRA DOS SANTOS", "cargo": "CC-07", "venc": 639.0, "repres": 2555.0}, {"matricula": "17118867", "nome": "SASBEN MARIA DE CASTRO ANTUN DA SILVA", "cargo": "CC-07", "venc": 639.0, "repres": 2555.0}, {"matricula": "17323711", "nome": "ROZANE MARIA LIMA CRUZ", "cargo": "CC-06", "venc": 561.0, "repres": 2245.0}, {"matricula": "17118417", "nome": "LEONARDO SAMPAIO OLIVEIRA", "cargo": "CNE-03", "venc": 2589.0, "repres": 10355.0}, {"matricula": "17118875", "nome": "PAULA ZAGATO BARBOSA ALQUIMIM", "cargo": "CC-08", "venc": 735.0, "repres": 2940.0}, {"matricula": "17144752", "nome": "ENEILA TORRES XAVIER", "cargo": "CC-07", "venc": 639.0, "repres": 2555.0}, {"matricula": "16937740", "nome": "DEBORA SILVA RAMOS", "cargo": "CNE-07", "venc": 1171.0, "repres": 4685.0}, {"matricula": "17118832", "nome": "MARIANA PARREIRA DA SILVA", "cargo": "CNE-06", "venc": 1465.0, "repres": 5860.0}, {"matricula": "1726149X", "nome": "GUSTAVO SILVA SIRKIS", "cargo": "CC-07", "venc": 639.0, "repres": 2555.0}, {"matricula": "01951580", "nome": "LUIZ FELIPE BLANCO DE ALENCAR", "cargo": "CPE-07", "venc": 0.0, "repres": 4685.0}, {"matricula": "16935276", "nome": "CLEBIANE DOS ANJOS PEREIRA LEMOS", "cargo": "CC-06", "venc": 561.0, "repres": 2245.0}, {"matricula": "01840509", "nome": "ALEX DE OLIVEIRA COSTA", "cargo": "CPE-05", "venc": 0.0, "repres": 6510.0}, {"matricula": "16895436", "nome": "MARIA SONIA GONCALVES", "cargo": "CC-04", "venc": 405.0, "repres": 1620.0}, {"matricula": "16603842", "nome": "CARLOS HENRIQUE DA SILVA MOURA", "cargo": "CPC-08", "venc": 0.0, "repres": 2940.0}, {"matricula": "17003334", "nome": "RODRIGO ESTEVES DE OLIVEIRA", "cargo": "CNE-08", "venc": 979.0, "repres": 3915.0}, {"matricula": "16895363", "nome": "DIOGO DA SILVA MOREIRA", "cargo": "CNE-07", "venc": 1171.0, "repres": 4685.0}, {"matricula": "17302161", "nome": "LARISSA SANTOS SALGADO", "cargo": "CC-06", "venc": 561.0, "repres": 2245.0}, {"matricula": "17003393", "nome": "ROGERIO OSENO PONTES", "cargo": "CNE-07", "venc": 1171.0, "repres": 4685.0}, {"matricula": "16895339", "nome": "GUILHERMINO SILVEIRA ROCHA", "cargo": "CNE-07", "venc": 1171.0, "repres": 4685.0}, {"matricula": "17118131", "nome": "VALTERSON DA SILVA", "cargo": "CPE-02", "venc": 0.0, "repres": 12010.0}, {"matricula": "01950967", "nome": "MARCELA VERSIANI VENANCIO PIRES", "cargo": "CPE-07", "venc": 0.0, "repres": 4685.0}, {"matricula": "17247683", "nome": "ISABELE LUCAS BITTENCOURT", "cargo": "CC-07", "venc": 639.0, "repres": 2555.0}, {"matricula": "17285283", "nome": "KALYNNA KATYA MACIEL RIBEIRO", "cargo": "CC-05", "venc": 483.0, "repres": 1930.0}, {"matricula": "17286360", "nome": "BIANCA LUZIA VIEIRA DE ARAUJO", "cargo": "CC-05", "venc": 483.0, "repres": 1930.0}, {"matricula": "17163943", "nome": "LUCIA HELENA MAGALHAES BUENO ROSA", "cargo": "CC-04", "venc": 405.0, "repres": 1620.0}, {"matricula": "1721260X", "nome": "ROSANE APARECIDA DA SILVA CEZAR", "cargo": "CC-04", "venc": 405.0, "repres": 1620.0}, {"matricula": "01949314", "nome": "EDUARDO DA CUNHA LAMOUNIER FIGUEIREDO DOS SANTOS", "cargo": "CPE-07", "venc": 0.0, "repres": 4685.0}, {"matricula": "17167795", "nome": "JOSE GUILHERME VIEIRA CORDEIRO DA SILVA", "cargo": "CC-07", "venc": 639.0, "repres": 2555.0}, {"matricula": "02638770", "nome": "MARCUS VINICIUS FALCAO PAREDES", "cargo": "CPE-07", "venc": 0.0, "repres": 4685.0}, {"matricula": "16908236", "nome": "RAQUEL BASTOS DOS SANTOS NETA", "cargo": "CC-06", "venc": 561.0, "repres": 2245.0}, {"matricula": "17271371", "nome": "MARIA DAS GRACAS SILVA", "cargo": "CC-06", "venc": 561.0, "repres": 2245.0}, {"matricula": "17037158", "nome": "GIOVANA RAQUEL DA SILVA GONCALVES", "cargo": "CC-04", "venc": 405.0, "repres": 1620.0}, {"matricula": "16931475", "nome": "ALINE APARECIDA MONTEIRO PAULO", "cargo": "CC-04", "venc": 405.0, "repres": 1620.0}, {"matricula": "02638878", "nome": "LUCIANA DA SILVA PACHECO", "cargo": "CPE-07", "venc": 0.0, "repres": 4685.0}, {"matricula": "16936663", "nome": "GLAUBER DE ABREU DANTAS", "cargo": "CC-08", "venc": 735.0, "repres": 2940.0}, {"matricula": "01978659", "nome": "NATHALIA LIMA DE ARAUJO ALMEIDA", "cargo": "CPE-02", "venc": 0.0, "repres": 12010.0}, {"matricula": "17284627", "nome": "ANDRE LUIS MARINHO DA COSTA VALENTIM", "cargo": "CC-08", "venc": 735.0, "repres": 2940.0}, {"matricula": "17284635", "nome": "KAYAN DE SOUSA CARVALHO", "cargo": "CC-08", "venc": 735.0, "repres": 2940.0}, {"matricula": "17245613", "nome": "LILIAN APARECIDA RODRIGUES DORNELAS", "cargo": "CC-05", "venc": 483.0, "repres": 1930.0}, {"matricula": "0184072X", "nome": "ANTONIO CARLOS PAIM TERRA", "cargo": "CPE-07", "venc": 0.0, "repres": 4685.0}, {"matricula": "02637553", "nome": "PATRICIA KWIATKOWSKI", "cargo": "CPC-06", "venc": 0.0, "repres": 2245.0}, {"matricula": "16895096", "nome": "NATALIA BATISTA DOS ANJOS", "cargo": "CNE-08", "venc": 979.0, "repres": 3915.0}, {"matricula": "16937767", "nome": "GISLAYNE CARDOSO SANTANA", "cargo": "CC-08", "venc": 735.0, "repres": 2940.0}, {"matricula": "17073790", "nome": "LUIZA RIBEIRO SANT ANNA", "cargo": "CC-06", "venc": 561.0, "repres": 2245.0}, {"matricula": "02644894", "nome": "LEONARDO DE ABREU PEREIRA RODRIGUES", "cargo": "CPE-07", "venc": 0.0, "repres": 4685.0}, {"matricula": "16946065", "nome": "DAVI COSTA DOS REIS", "cargo": "CC-06", "venc": 561.0, "repres": 2245.0}, {"matricula": "17319951", "nome": "JOAO VITOR SALES DE SOUZA", "cargo": "CC-05", "venc": 483.0, "repres": 1930.0}, {"matricula": "02641526", "nome": "LARISSA MOREIRA CARDOSO", "cargo": "CPC-06", "venc": 0.0, "repres": 2245.0}, {"matricula": "01840428", "nome": "BRUNO HENRIQUE SOUZA CORREA", "cargo": "CPE-07", "venc": 0.0, "repres": 4685.0}, {"matricula": "17286816", "nome": "GABRIEL DUARTE DO NASCIMENTO", "cargo": "CC-08", "venc": 735.0, "repres": 2940.0}, {"matricula": "16895215", "nome": "SIMONE JUNG MATOS", "cargo": "CC-06", "venc": 561.0, "repres": 2245.0}, {"matricula": "01953621", "nome": "PAULO RUBENS MARTINS ARAUJO FILHO", "cargo": "CPC-06", "venc": 0.0, "repres": 2245.0}, {"matricula": "02639807", "nome": "ROGER HENRIQUE DE OLIVEIRA SOUZA", "cargo": "CPC-06", "venc": 0.0, "repres": 2245.0}, {"matricula": "16604547", "nome": "JANAINA SOARES E SILVA ARAUJO", "cargo": "CPE-07", "venc": 0.0, "repres": 4685.0}, {"matricula": "16895193", "nome": "DIEGO DA SILVA CAMARGOS", "cargo": "CC-06", "venc": 561.0, "repres": 2245.0}, {"matricula": "17264952", "nome": "ANAISE AMARAL COELHO ALVES", "cargo": "CC-06", "venc": 561.0, "repres": 2245.0}, {"matricula": "02638789", "nome": "GERALDO DE ALMEIDA NETO", "cargo": "CPC-06", "venc": 0.0, "repres": 2245.0}, {"matricula": "02158000", "nome": "NATANAEL ANTUNES ABADE", "cargo": "CPE-07", "venc": 0.0, "repres": 4685.0}, {"matricula": "16895312", "nome": "PATRICIA GOMES MONTEIRO", "cargo": "CC-06", "venc": 561.0, "repres": 2245.0}, {"matricula": "16936787", "nome": "SANDRA MARIA DAMACENA DE CASTRO SANTOS", "cargo": "CC-06", "venc": 561.0, "repres": 2245.0}, {"matricula": "17257506", "nome": "ZILEI MARIA CINTRA", "cargo": "CPC-06", "venc": 0.0, "repres": 2245.0}, {"matricula": "02646765", "nome": "GERALDO JOSE VIEIRA", "cargo": "CPE-07", "venc": 0.0, "repres": 4685.0}, {"matricula": "16896815", "nome": "SABRINA DAMASCENA DUTRA", "cargo": "CC-06", "venc": 561.0, "repres": 2245.0}, {"matricula": "17268982", "nome": "GIZELE ROSALEM", "cargo": "CC-06", "venc": 561.0, "repres": 2245.0}, {"matricula": "17269822", "nome": "TOMAS AUGUSTO LEITE BAPTISTA", "cargo": "CC-06", "venc": 561.0, "repres": 2245.0}, {"matricula": "16606450", "nome": "AMANDA CALDAS PORTO", "cargo": "CPE-07", "venc": 0.0, "repres": 4685.0}, {"matricula": "16953800", "nome": "CAIO CESAR AMARAL DE SOUZA", "cargo": "CC-08", "venc": 735.0, "repres": 2940.0}, {"matricula": "01951327", "nome": "CLARINE CORREA DA COSTA ROCHA", "cargo": "CPC-06", "venc": 0.0, "repres": 2245.0}, {"matricula": "02638843", "nome": "JEIZA RODRIGUES JERONIMO", "cargo": "CPC-08", "venc": 0.0, "repres": 2940.0}, {"matricula": "16604458", "nome": "LOURDES MARTINS DE MORAIS", "cargo": "CPE-07", "venc": 0.0, "repres": 4685.0}, {"matricula": "17302137", "nome": "GUILHERME FERREIRA BRASIL", "cargo": "CC-06", "venc": 561.0, "repres": 2245.0}, {"matricula": "02638827", "nome": "SIMONE DE MOURA ROSA", "cargo": "CPE-02", "venc": 0.0, "repres": 12010.0}, {"matricula": "17175453", "nome": "DEISIANE PADILHA ROCHA", "cargo": "CNE-08", "venc": 979.0, "repres": 3915.0}, {"matricula": "16937430", "nome": "AMARILDO DE RESENDE SOUSA", "cargo": "CC-06", "venc": 561.0, "repres": 2245.0}, {"matricula": "17285593", "nome": "MARIA NEUSA TIMOTEO DE ALMEIDA", "cargo": "CC-05", "venc": 483.0, "repres": 1930.0}, {"matricula": "02638894", "nome": "MARCOS EDUARDO SATO OZEKI", "cargo": "CPE-07", "venc": 0.0, "repres": 4685.0}, {"matricula": "16938305", "nome": "CATARINE DE SIQUEIRA ANDRADE", "cargo": "CC-07", "venc": 639.0, "repres": 2555.0}, {"matricula": "0266495X", "nome": "THASSIA RIBEIRO SANTIAGO", "cargo": "CPE-07", "venc": 0.0, "repres": 4685.0}, {"matricula": "02665131", "nome": "MARCOS VINICIUS FELIX", "cargo": "CPC-06", "venc": 0.0, "repres": 2245.0}, {"matricula": "17232678", "nome": "RODOLFO DE PAULA OLIVEIRA", "cargo": "CPE-07", "venc": 0.0, "repres": 4685.0}, {"matricula": "02663996", "nome": "VICTOR ASSIS CARVALHO SANTOS", "cargo": "CPC-06", "venc": 0.0, "repres": 2245.0}, {"matricula": "02664046", "nome": "FERNANDO ALMEIDA CORTIZO", "cargo": "CPE-07", "venc": 0.0, "repres": 4685.0}, {"matricula": "02646145", "nome": "BRUNA DE HOLANDA MARTINS", "cargo": "CPC-06", "venc": 0.0, "repres": 2245.0}, {"matricula": "02639068", "nome": "LEANDRO DE ARAUJO PINHEIRO", "cargo": "CPE-07", "venc": 0.0, "repres": 4685.0}, {"matricula": "02668513", "nome": "NEDER LOPES ABOU IBRAHIM", "cargo": "CPC-06", "venc": 0.0, "repres": 2245.0}, {"matricula": "02643022", "nome": "FERNANDA TAPIA TORRES MAXIMO", "cargo": "CPE-07", "venc": 0.0, "repres": 4685.0}, {"matricula": "02639009", "nome": "TALITA MENEZES DOS SANTOS MAGNI", "cargo": "CPC-06", "venc": 0.0, "repres": 2245.0}, {"matricula": "02639173", "nome": "MARCOS JOAO DA CUNHA", "cargo": "CPE-02", "venc": 0.0, "repres": 12010.0}, {"matricula": "16963172", "nome": "JOAO GONZAGA NETO", "cargo": "CNE-04", "venc": 2231.0, "repres": 8925.0}, {"matricula": "17322677", "nome": "CAROLINE DIAS TROMBETA", "cargo": "CNE-07", "venc": 1171.0, "repres": 4685.0}, {"matricula": "17144582", "nome": "MARCIO SOUZA DE OLIVEIRA", "cargo": "CC-07", "venc": 639.0, "repres": 2555.0}, {"matricula": "17144655", "nome": "ALEXANDRO DIACOPULOS COSTA", "cargo": "CC-07", "venc": 639.0, "repres": 2555.0}, {"matricula": "17266971", "nome": "EMILIANA GUILHERME RAIMUNDO ALBERNAZ", "cargo": "CC-06", "venc": 561.0, "repres": 2245.0}, {"matricula": "17194784", "nome": "PETRONIO CARDOSO SOUTO", "cargo": "CC-04", "venc": 405.0, "repres": 1620.0}, {"matricula": "01952358", "nome": "IGOR PROENCA DO ESPIRITO SANTO", "cargo": "CPE-08", "venc": 0.0, "repres": 3915.0}, {"matricula": "16895444", "nome": "MAGDA ALMEIDA PEREIRA", "cargo": "CC-06", "venc": 561.0, "repres": 2245.0}, {"matricula": "0197517X", "nome": "CAROLINA LEPSCH KENUPP AMARIO", "cargo": "CPE-07", "venc": 0.0, "repres": 4685.0}, {"matricula": "16895401", "nome": "EDNA VIEIRA DA PARQUES ROCHA", "cargo": "CC-06", "venc": 561.0, "repres": 2245.0}, {"matricula": "01948857", "nome": "JOAO PAULO MORAIS FARIA ALVES", "cargo": "CPE-07", "venc": 0.0, "repres": 4685.0}, {"matricula": "17057329", "nome": "GUILHERME DA SILVA PARQUES VASQUES XAVIER", "cargo": "CC-06", "venc": 561.0, "repres": 2245.0}, {"matricula": "02644258", "nome": "GESISLEU DARC PARQUES JACINTO", "cargo": "CPC-07", "venc": 0.0, "repres": 2555.0}, {"matricula": "02646552", "nome": "RENATA DE VASCONCELOS BARRETO", "cargo": "CPC-07", "venc": 0.0, "repres": 2555.0}, {"matricula": "01980548", "nome": "DIEGO LEONARDO MAXIMO GORDINHO", "cargo": "CPE-07", "venc": 0.0, "repres": 4685.0}, {"matricula": "02639157", "nome": "CLAUDIOMIR PARQUES GONCALVES DA SILVA", "cargo": "CPC-07", "venc": 0.0, "repres": 2555.0}, {"matricula": "01952331", "nome": "RAFAEL LOSCHI FONSECA", "cargo": "CPC-07", "venc": 0.0, "repres": 2555.0}, {"matricula": "16992512", "nome": "BRUNA SOUSA DA SILVA", "cargo": "CNE-07", "venc": 1171.0, "repres": 4685.0}, {"matricula": "1703714X", "nome": "MARCIA BARIFALDI HIRS", "cargo": "CNE-08", "venc": 979.0, "repres": 3915.0}, {"matricula": "16604482", "nome": "AGDA SABINO DE CARVALHO REIS", "cargo": "CPC-06", "venc": 0.0, "repres": 2245.0}, {"matricula": "01918303", "nome": "ERISOM VIEIRA CASSIMIRO", "cargo": "CPE-07", "venc": 0.0, "repres": 4685.0}, {"matricula": "02639599", "nome": "WILLIAM NERES DE ARAUJO", "cargo": "CPC-08", "venc": 0.0, "repres": 2940.0}, {"matricula": "17019834", "nome": "JANAINA EMANUELLE MENDES DE OLIVEIRA STARLING", "cargo": "CNE-07", "venc": 1171.0, "repres": 4685.0}, {"matricula": "01839896", "nome": "RODRIGO AUGUSTO LIMA SANTOS", "cargo": "CPC-08", "venc": 0.0, "repres": 2940.0}, {"matricula": "17210240", "nome": "MARCELO SOUZA MAIA", "cargo": "CPE-08", "venc": 0.0, "repres": 3915.0}, {"matricula": "17269075", "nome": "MATHEUS HENRIQUE DE SOUZA COSTA", "cargo": "CC-07", "venc": 639.0, "repres": 2555.0}, {"matricula": "02642441", "nome": "FLAVIO PEREIRA MADRILES", "cargo": "CPC-08", "venc": 0.0, "repres": 2940.0}, {"matricula": "17210542", "nome": "ANDRE LARA CAMPOS GUIMARAES", "cargo": "CPC-06", "venc": 0.0, "repres": 2245.0}, {"matricula": "17296579", "nome": "MARIANA GOMES DA SILVA", "cargo": "CC-03", "venc": 363.0, "repres": 1450.0}, {"matricula": "17121752", "nome": "JOSE WELITOM DA SILVA", "cargo": "CNE-07", "venc": 1171.0, "repres": 4685.0}, {"matricula": "17285224", "nome": "WAGNER ALVES BARBOSA", "cargo": "CC-04", "venc": 405.0, "repres": 1620.0}, {"matricula": "16606205", "nome": "GILSON NEUHAUSS", "cargo": "CPC-08", "venc": 0.0, "repres": 2940.0}, {"matricula": "00347736", "nome": "ANTONIO ANGELO DA SILVA", "cargo": "CPC-04", "venc": 0.0, "repres": 1620.0}, {"matricula": "01839721", "nome": "RICARDO RORIZ", "cargo": "CPE-02", "venc": 0.0, "repres": 12010.0}, {"matricula": "01839411", "nome": "ROGERIO DE CASTRO DUARTE E SILVA", "cargo": "CPE-07", "venc": 0.0, "repres": 4685.0}, {"matricula": "17281881", "nome": "JOSE IVALDO ALVES BEZERRA", "cargo": "CC-07", "venc": 639.0, "repres": 2555.0}, {"matricula": "01981862", "nome": "WELKSON ISIDORIO DO NASCIMENTO", "cargo": "CPE-07", "venc": 0.0, "repres": 4685.0}, {"matricula": "16895266", "nome": "FRANCISCO ERIVALDO MADEIRO ALVES", "cargo": "CC-06", "venc": 561.0, "repres": 2245.0}, {"matricula": "17270642", "nome": "ABIGAIL CANCIO DA FONSECA PONTE", "cargo": "CPC-08", "venc": 0.0, "repres": 2940.0}, {"matricula": "02643863", "nome": "JOSE CELESTINO DA SILVA JUNIOR", "cargo": "CPC-08", "venc": 0.0, "repres": 2940.0}, {"matricula": "00375837", "nome": "JOSEFA LAURIZETE RIBEIRO", "cargo": "CPC-04", "venc": 0.0, "repres": 1620.0}, {"matricula": "0032065X", "nome": "MARCOS ANTONIO LANDIM DE SOUSA", "cargo": "CPC-08", "venc": 0.0, "repres": 2940.0}, {"matricula": "16605071", "nome": "GESNEI PEREIRA CARVALHO", "cargo": "CPC-08", "venc": 0.0, "repres": 2940.0}, {"matricula": "17255805", "nome": "LYVYA ALVES DA SILVA", "cargo": "CC-04", "venc": 405.0, "repres": 1620.0}, {"matricula": "17155797", "nome": "REALDO DELGADO PAIVA", "cargo": "CNE-08", "venc": 979.0, "repres": 3915.0}, {"matricula": "02643855", "nome": "JUCERLEIDE RODRIGUES DA SILVA MELO", "cargo": "CPE-07", "venc": 0.0, "repres": 4685.0}, {"matricula": "14306972", "nome": "SHEYLA FERREIRA MATOS", "cargo": "CPC-08", "venc": 0.0, "repres": 2940.0}, {"matricula": "17002168", "nome": "ANTONIO ALEXANDRE TEIXEIRA", "cargo": "CC-05", "venc": 483.0, "repres": 1930.0}, {"matricula": "14307057", "nome": "PAMELA DE ARAUJO SANTOS SENA", "cargo": "CPC-08", "venc": 0.0, "repres": 2940.0}, {"matricula": "17281830", "nome": "ANDERSON BASILIO BESERRA", "cargo": "CPE-08", "venc": 0.0, "repres": 3915.0}, {"matricula": "17281814", "nome": "OLIVIA SANTOS PASSOS", "cargo": "CPC-06", "venc": 0.0, "repres": 2245.0}, {"matricula": "17283795", "nome": "LIVIA BARBOSA LUCAS", "cargo": "CPC-05", "venc": 0.0, "repres": 1930.0}, {"matricula": "01914146", "nome": "RALFE REIS CAVALCANTE DA SILVA", "cargo": "CPE-07", "venc": 0.0, "repres": 4685.0}, {"matricula": "02646587", "nome": "JOAO FERREIRA JUNIOR", "cargo": "CPC-06", "venc": 0.0, "repres": 2245.0}, {"matricula": "01583212", "nome": "ANDRE LUIZ CORDEIRO DE MENDONCA", "cargo": "CPC-08", "venc": 0.0, "repres": 2940.0}, {"matricula": "16917871", "nome": "CAIO FELIPE CARVALHO ARANHA", "cargo": "CC-04", "venc": 405.0, "repres": 1620.0}, {"matricula": "01983733", "nome": "PAULO HENRIQUE FERNANDES OLIVEIRA", "cargo": "CPC-08", "venc": 0.0, "repres": 2940.0}, {"matricula": "02646749", "nome": "TARCISIO LUIZ CUNHA ALCANTARA CALDAS", "cargo": "CPC-08", "venc": 0.0, "repres": 2940.0}, {"matricula": "17156033", "nome": "NILCELENE SOARES MARQUES", "cargo": "CC-05", "venc": 483.0, "repres": 1930.0}, {"matricula": "01950843", "nome": "EVANDRO DE OLIVEIRA SILVA", "cargo": "CPC-08", "venc": 0.0, "repres": 2940.0}, {"matricula": "01917633", "nome": "VALDINEI PEREIRA LIMA", "cargo": "CPE-07", "venc": 0.0, "repres": 4685.0}, {"matricula": "17144973", "nome": "JOELMA MARQUES SANTANA DE ARAUJO", "cargo": "CC-08", "venc": 735.0, "repres": 2940.0}, {"matricula": "17155967", "nome": "LUIZ GUILHERME DE ALMEIDA FERNANDES", "cargo": "CC-07", "venc": 639.0, "repres": 2555.0}, {"matricula": "17284643", "nome": "MARIA TEREZA COSTA GOMES DE QUEIROZ", "cargo": "CC-05", "venc": 483.0, "repres": 1930.0}, {"matricula": "02639564", "nome": "DANYELLA SHAYENE LOPES DA SILVA", "cargo": "CPE-02", "venc": 0.0, "repres": 12010.0}, {"matricula": "17024188", "nome": "MARCOS FLAVIO GOMES DE MATOS 029 - INSTITUTO DO MEIO AMBIENTE E DOS REC.HIDRICOS DO DF - BSB AMBIENTAL Símbolo Qtde Vagos Qtde Ocupados Qtde Bloqueados Qtde Bloq. LRF Qtde Reservados Total Valor CC-03 0 1 0 0 0 1 1.813,00 CC-04 0 10 0 0 0 10 20.250,00 CC-05 0 10 0 0 0 10 24.130,00 CC-06 0 24 0 0 0 24 67.344,00 CC-07 0 16 0 0 0 16 51.104,00 CC-08 0 10 0 0 0 10 36.750,00 CDA-01 0 1 0 0 0 1 22.550,00 CNE-03 0 2 0 0 0 2 25.888,00 CNE-04 0 1 0 0 0 1 11.156,00 CNE-06 0 1 0 0 0 1 7.325,00 CNE-07 0 8 0 0 0 8 46.848,00 CNE-08 0 6 0 0 0 6 29.364,00 CPC-04 0 2 0 0 0 2 3.240,00 CPC-05 0 1 0 0 0 1 1.930,00 CPC-06 0 16 0 0 0 16 35.920,00 CPC-07 0 4 0 0 0 4 10.220,00 CPC-08 0 16 0 0 0 16 47.040,00 CPE-02 0 6 0 0 0 6 72.060,00 CPE-05 0 1 0 0 0 1 6.510,00 CPE-07 0 28 0 0 0 28 131.180,00 CPE-08 0 3 0 0 0 3 11.745,00 Total 0 167 0 0 0 167 664.367,00", "cargo": "CC-08", "venc": 735.0, "repres": 2940.0}];
+
+const DEFAULT_CARGOS = [
+  {cargo:"CDA-01", venc:4510.00, repres:18040.00},
+  {cargo:"CNE-01", venc:3483.00, repres:13930.00},
+  {cargo:"CNE-02", venc:3003.00, repres:12010.00},
+  {cargo:"CNE-03", venc:2589.00, repres:10355.00},
+  {cargo:"CNE-04", venc:2231.00, repres:8925.00},
+  {cargo:"CNE-05", venc:1628.00, repres:6510.00},
+  {cargo:"CNE-06", venc:1465.00, repres:5860.00},
+  {cargo:"CNE-07", venc:1171.00, repres:4685.00},
+  {cargo:"CNE-08", venc:979.00,  repres:3915.00},
+  {cargo:"CPE-01", venc:0,       repres:13930.00},
+  {cargo:"CPE-02", venc:0,       repres:12010.00},
+  {cargo:"CPE-03", venc:0,       repres:10355.00},
+  {cargo:"CPE-04", venc:0,       repres:8925.00},
+  {cargo:"CPE-05", venc:0,       repres:6510.00},
+  {cargo:"CPE-06", venc:0,       repres:5860.00},
+  {cargo:"CPE-07", venc:0,       repres:4685.00},
+  {cargo:"CPE-08", venc:0,       repres:3915.00},
+  {cargo:"CC-01",  venc:278.00,  repres:1110.00},
+  {cargo:"CC-02",  venc:320.00,  repres:1280.00},
+  {cargo:"CC-03",  venc:363.00,  repres:1450.00},
+  {cargo:"CC-04",  venc:405.00,  repres:1620.00},
+  {cargo:"CC-05",  venc:483.00,  repres:1930.00},
+  {cargo:"CC-06",  venc:561.00,  repres:2245.00},
+  {cargo:"CC-07",  venc:639.00,  repres:2555.00},
+  {cargo:"CC-08",  venc:735.00,  repres:2940.00},
+  {cargo:"CPC-01", venc:0,       repres:1110.00},
+  {cargo:"CPC-02", venc:0,       repres:1280.00},
+  {cargo:"CPC-03", venc:0,       repres:1450.00},
+  {cargo:"CPC-04", venc:0,       repres:1620.00},
+  {cargo:"CPC-05", venc:0,       repres:1930.00},
+  {cargo:"CPC-06", venc:0,       repres:2245.00},
+  {cargo:"CPC-07", venc:0,       repres:2555.00},
+  {cargo:"CPC-08", venc:0,       repres:2940.00},
+];
+
+const SERVIDORES_REFERENCIA = "Agosto/2026 (Instituto do Meio Ambiente e dos Rec. Hídricos do DF)";
+
+/* ---------------- Estado ---------------- */
+let cargos = [];
+let rows = [];
+let servidores = [];
+let servidoresRef = SERVIDORES_REFERENCIA;
+let saveTimer = null;
+let rowEls = [];
+let cargoEls = [];
+let servidorEls = [];
+
+function blankRow(){
+  return {
+    fator:"CV",
+    subMat:"", subNome:"", subCargo:"", subVenc:0, subRepres:0,
+    tioMat:"", tioNome:"", tioCargo:"", tioVenc:0, tioRepres:0,
+    inicio:"", fim:"",
+    dodfNum:"", dodfData:"", processo:""
+  };
+}
+
+/* ---------------- Parser do relatório de servidores ---------------- */
+function parseServidoresText(text){
+  const lines = text.split(/\r?\n/);
+  const skip = [
+    /^ocupante por órgão/i,
+    /^órgão:/i,
+    /^unidade:/i,
+    /^lotação:/i,
+    /^código\s+descrição/i,
+    /^\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2}\s+\d+\s*\/\s*\d+/
+  ];
+  const recordRe = /^(\d{6,9})\s+(.+?)\s+([A-Z]{2,4}-\d{1,2})\s+R\$\s*([\d.]+,\d{2})\s+R\$\s*([\d.]+,\d{2})\s+R\$\s*([\d.]+,\d{2})\s+OCUPADO\s+([0-9A-Za-z]{6,10})\s+(.+)$/;
+  const parseMoney = s => parseFloat(s.replace(/\./g,'').replace(',','.'));
+  const records = [];
+  let current = null;
+  const flush = () => {
+    if(current){
+      current.nome = current.nome.replace(/\s+/g,' ').trim();
+      records.push(current);
+    }
+    current = null;
+  };
+  for(const raw of lines){
+    const line = raw.trim();
+    if(!line) continue;
+    if(skip.some(re => re.test(line))) continue;
+    const m = line.match(recordRe);
+    if(m){
+      flush();
+      let resto = m[8].trim();
+      const vm = resto.match(/\s+(SIM|N[ÃA]O)$/);
+      if(vm){ resto = resto.slice(0, vm.index).trim(); }
+      current = {
+        matricula: m[7],
+        nome: resto,
+        cargo: m[3],
+        // O relatório "ocupante por órgão" imprime as colunas vencimento/representação
+        // trocadas em relação à tabela oficial de valores (confirmado cruzando com o
+        // PDF de cargos comissionados) — por isso os grupos são invertidos aqui.
+        venc: parseMoney(m[5]),
+        repres: parseMoney(m[4])
+      };
+    } else {
+      if(current){
+        if(/^(SIM|N[ÃA]O)$/.test(line)) { /* linha isolada de vínculo, ignorar */ }
+        else current.nome += ' ' + line;
+      }
+    }
+  }
+  flush();
+  return records;
+}
+
+function processarColagem(){
+  const text = document.getElementById('paste-servidores').value;
+  const resultEl = document.getElementById('parse-result');
+  if(!text || !text.trim()){
+    resultEl.innerHTML = '<div class="parse-result warn">Cole o texto do relatório antes de processar.</div>';
+    return;
+  }
+  const parsed = parseServidoresText(text);
+  if(parsed.length === 0){
+    resultEl.innerHTML = '<div class="parse-result warn">Não foi possível reconhecer nenhum registro. Confira se o texto colado está no mesmo formato do relatório "ocupante por órgão".</div>';
+    return;
+  }
+  servidores = parsed;
+  servidoresRef = "Atualizado manualmente em " + new Date().toLocaleDateString('pt-BR');
+  renderServidores();
+  scheduleSave();
+  resultEl.innerHTML = `<div class="parse-result ok">${parsed.length} servidor(es) reconhecido(s) e carregado(s) com sucesso. Revise a lista abaixo.</div>`;
+  document.getElementById('paste-servidores').value = '';
+}
+
+/* ---------------- Persistência ---------------- */
+async function loadState(){
+  setStatus("loading");
+  try{
+    const parsed = await window.obterEstadoModulo('substituicoes');
+    if(parsed){
+      cargos = Array.isArray(parsed.cargos) && parsed.cargos.length ? parsed.cargos.map(migrateCargo) : DEFAULT_CARGOS.slice();
+      rows = Array.isArray(parsed.rows) && parsed.rows.length ? parsed.rows.map(migrateRow) : [blankRow()];
+      servidores = Array.isArray(parsed.servidores) && parsed.servidores.length ? parsed.servidores : DEFAULT_SERVIDORES.slice();
+      servidoresRef = parsed.servidoresRef || SERVIDORES_REFERENCIA;
+    } else {
+      cargos = DEFAULT_CARGOS.slice();
+      rows = [blankRow()];
+      servidores = DEFAULT_SERVIDORES.slice();
+      servidoresRef = SERVIDORES_REFERENCIA;
+    }
+  }catch(e){
+    cargos = DEFAULT_CARGOS.slice();
+    rows = [blankRow()];
+    servidores = DEFAULT_SERVIDORES.slice();
+    servidoresRef = SERVIDORES_REFERENCIA;
+  }
+  renderCargos();
+  renderServidores();
+  renderRows();
+  setStatus("ok");
+}
+
+function migrateCargo(c){
+  if(c.repres === undefined){
+    return {cargo: c.cargo || "", venc: parseFloat(c.venc)||0, repres: parseFloat(c.valor)||0};
+  }
+  return {cargo: c.cargo || "", venc: parseFloat(c.venc)||0, repres: parseFloat(c.repres)||0};
+}
+
+function migrateRow(r){
+  if(r.subRepres === undefined){
+    const subCargoRef = findCargo(r.subCargo);
+    const tioCargoRef = findCargo(r.tioCargo);
+    return {
+      fator: r.fator || "CV",
+      subMat: r.subMat||"", subNome: r.subNome||"", subCargo: r.subCargo||"",
+      subVenc: subCargoRef ? subCargoRef.venc : 0,
+      subRepres: parseFloat(r.subValor)||0,
+      tioMat: r.tioMat||"", tioNome: r.tioNome||"", tioCargo: r.tioCargo||"",
+      tioVenc: tioCargoRef ? tioCargoRef.venc : 0,
+      tioRepres: parseFloat(r.tioValor)||0,
+      inicio: r.inicio||"", fim: r.fim||"",
+      dodfNum: r.dodfNum||"", dodfData: r.dodfData||"", processo: r.processo||""
+    };
+  }
+  if(!['CV','SV','SVV'].includes(r.fator)) r.fator = 'CV';
+  return r;
+}
+
+function scheduleSave(){
+  setStatus("saving");
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveState, 600);
+}
+
+async function saveState(){
+  try{
+    const payload = {cargos, rows, servidores, servidoresRef};
+    const ok = await window.salvarEstadoModulo('substituicoes', payload);
+    setStatus(ok ? "ok" : "error");
+  }catch(e){
+    setStatus("error");
+  }
+}
+
+function setStatus(state){
+  const dot = document.getElementById('status-dot');
+  const text = document.getElementById('status-text');
+  dot.classList.remove('saving','error');
+  if(state === "saving"){ dot.classList.add('saving'); text.textContent = "Salvando…"; }
+  else if(state === "error"){ dot.classList.add('error'); text.textContent = "Não foi possível salvar agora"; }
+  else if(state === "loading"){ text.textContent = "Carregando…"; }
+  else { text.textContent = "Dados salvos na nuvem"; }
+}
+
+/* ---------------- Painéis ---------------- */
+function togglePanel(id){
+  document.getElementById(id).classList.toggle('collapsed');
+}
+
+/* ---------------- Base de servidores ---------------- */
+function renderServidores(){
+  const info = document.getElementById('servidores-info');
+  info.innerHTML = `<b>${servidores.length}</b> servidor(es) carregado(s) — base: ${escapeHtml(servidoresRef)}`;
+
+  const busca = (document.getElementById('busca-servidor').value || '').trim().toLowerCase();
+  const body = document.getElementById('servidores-body');
+  body.innerHTML = "";
+  servidorEls = [];
+
+  servidores.forEach((s, i)=>{
+    if(busca){
+      const alvo = (s.nome+' '+s.matricula+' '+s.cargo).toLowerCase();
+      if(!alvo.includes(busca)) return;
+    }
+    const tr = document.createElement('tr');
+
+    const inMat = document.createElement('input');
+    inMat.value = s.matricula;
+    inMat.oninput = ()=>{ servidores[i].matricula = inMat.value; refreshServidorDatalist(); scheduleSave(); };
+
+    const inNome = document.createElement('input');
+    inNome.value = s.nome;
+    inNome.oninput = ()=>{ servidores[i].nome = inNome.value; refreshServidorDatalist(); scheduleSave(); };
+
+    const inCargo = document.createElement('input');
+    inCargo.setAttribute('list','cargo-datalist');
+    inCargo.value = s.cargo;
+    inCargo.oninput = ()=>{ servidores[i].cargo = inCargo.value; scheduleSave(); };
+
+    const inVenc = document.createElement('input');
+    inVenc.type = 'number'; inVenc.step = '0.01'; inVenc.value = s.venc;
+    inVenc.oninput = ()=>{ servidores[i].venc = parseFloat(inVenc.value)||0; scheduleSave(); };
+
+    const inRepres = document.createElement('input');
+    inRepres.type = 'number'; inRepres.step = '0.01'; inRepres.value = s.repres;
+    inRepres.oninput = ()=>{ servidores[i].repres = parseFloat(inRepres.value)||0; scheduleSave(); };
+
+    const btnDel = document.createElement('button');
+    btnDel.className = 'btn btn-sm btn-danger'; btnDel.textContent = '✕'; btnDel.title = 'Remover';
+    btnDel.onclick = ()=> removeServidor(i);
+
+    [inMat, inNome, inCargo, inVenc, inRepres, btnDel].forEach((el, idx)=>{
+      const d = document.createElement('td');
+      d.appendChild(el);
+      tr.appendChild(d);
+    });
+    body.appendChild(tr);
+    servidorEls.push({inMat, inNome, inCargo, inVenc, inRepres});
+  });
+
+  refreshServidorDatalist();
+}
+
+function addServidor(){
+  servidores.push({matricula:"", nome:"NOVO SERVIDOR", cargo:"", venc:0, repres:0});
+  renderServidores();
+  scheduleSave();
+}
+
+function removeServidor(i){
+  servidores.splice(i,1);
+  renderServidores();
+  scheduleSave();
+}
+
+function refreshServidorDatalist(){
+  let dl = document.getElementById('servidor-datalist');
+  if(!dl){
+    dl = document.createElement('datalist');
+    dl.id = 'servidor-datalist';
+    document.body.appendChild(dl);
+  }
+  dl.innerHTML = servidores.map(s=>`<option value="${escapeAttr(s.nome)}">`).join('');
+
+  let dlMat = document.getElementById('matricula-datalist');
+  if(!dlMat){
+    dlMat = document.createElement('datalist');
+    dlMat.id = 'matricula-datalist';
+    document.body.appendChild(dlMat);
+  }
+  dlMat.innerHTML = servidores.map(s=>`<option value="${escapeAttr(s.matricula)}">${escapeAttr(s.nome)}</option>`).join('');
+}
+
+function findServidorByNome(nome){
+  const alvo = (nome||"").trim().toLowerCase();
+  if(!alvo) return null;
+  return servidores.find(s => s.nome.trim().toLowerCase() === alvo) || null;
+}
+function normalizeMatricula(s){
+  return (s||"").trim().toUpperCase().replace(/^0+(?=.)/,'');
+}
+function findServidorByMatricula(mat){
+  const alvo = normalizeMatricula(mat);
+  if(!alvo) return null;
+  return servidores.find(s => normalizeMatricula(s.matricula) === alvo) || null;
+}
+
+/* ---------------- Tabela de cargos ---------------- */
+function renderCargos(){
+  const body = document.getElementById('cargos-body');
+  body.innerHTML = "";
+  cargoEls = [];
+  cargos.forEach((c, i)=>{
+    const tr = document.createElement('tr');
+
+    const tdCargo = document.createElement('td');
+    const inCargo = document.createElement('input');
+    inCargo.value = c.cargo;
+    inCargo.oninput = ()=>{ cargos[i].cargo = inCargo.value; refreshCargoDatalists(); scheduleSave(); };
+    tdCargo.appendChild(inCargo);
+
+    let inVenc, inRepres, inRemun;
+
+    inVenc = document.createElement('input');
+    inVenc.type = "number"; inVenc.step="0.01"; inVenc.value = c.venc;
+    inVenc.oninput = ()=>{ cargos[i].venc = parseFloat(inVenc.value)||0; inRemun.value = fmtMoney(cargos[i].venc + cargos[i].repres); scheduleSave(); };
+    const tdVenc = tdMoney(inVenc);
+
+    inRepres = document.createElement('input');
+    inRepres.type = "number"; inRepres.step="0.01"; inRepres.value = c.repres;
+    inRepres.oninput = ()=>{ cargos[i].repres = parseFloat(inRepres.value)||0; inRemun.value = fmtMoney(cargos[i].venc + cargos[i].repres); scheduleSave(); };
+    const tdRepres = tdMoney(inRepres);
+
+    inRemun = document.createElement('input');
+    inRemun.readOnly = true;
+    inRemun.value = fmtMoney(c.venc + c.repres);
+    const tdRemun = tdMoney(inRemun);
+
+    const tdAcao = document.createElement('td');
+    const btnDel = document.createElement('button');
+    btnDel.className = "btn btn-sm btn-danger";
+    btnDel.textContent = "Remover";
+    btnDel.onclick = ()=> removeCargo(i);
+    tdAcao.appendChild(btnDel);
+
+    tr.appendChild(tdCargo); tr.appendChild(tdVenc); tr.appendChild(tdRepres); tr.appendChild(tdRemun); tr.appendChild(tdAcao);
+    body.appendChild(tr);
+    cargoEls.push({inCargo, inVenc, inRepres, inRemun});
+  });
+  refreshCargoDatalists();
+}
+
+function addCargo(){
+  cargos.push({cargo:"NOVO-CARGO", venc:0, repres:0});
+  renderCargos();
+  scheduleSave();
+}
+
+function removeCargo(i){
+  cargos.splice(i,1);
+  renderCargos();
+  scheduleSave();
+}
+
+function refreshCargoDatalists(){
+  let dl = document.getElementById('cargo-datalist');
+  if(!dl){
+    dl = document.createElement('datalist');
+    dl.id = 'cargo-datalist';
+    document.body.appendChild(dl);
+  }
+  dl.innerHTML = cargos.map(c=>`<option value="${escapeAttr(c.cargo)}">`).join('');
+}
+
+function findCargo(nome){
+  return cargos.find(c => c.cargo.trim().toLowerCase() === (nome||"").trim().toLowerCase());
+}
+
+/* ---------------- Cálculos ---------------- */
+function calcDiasAvos(inicioStr, fimStr){
+  if(!inicioStr || !fimStr) return {dias:0, avos:0};
+  const d1 = new Date(inicioStr+"T00:00:00");
+  const d2 = new Date(fimStr+"T00:00:00");
+  if(isNaN(d1) || isNaN(d2) || d2 < d1) return {dias:0, avos:0};
+  const dias = Math.round((d2-d1)/86400000) + 1;
+  let avos = 0;
+  let cursor = new Date(d1.getFullYear(), d1.getMonth(), 1);
+  const last = new Date(d2.getFullYear(), d2.getMonth(), 1);
+  while(cursor <= last){
+    const y = cursor.getFullYear(), m = cursor.getMonth();
+    const monthStart = new Date(y, m, 1);
+    const monthEnd = new Date(y, m+1, 0);
+    const segStart = d1 > monthStart ? d1 : monthStart;
+    const segEnd = d2 < monthEnd ? d2 : monthEnd;
+    const diasNoMes = Math.round((segEnd-segStart)/86400000) + 1;
+    if(diasNoMes >= 15) avos++;
+    cursor = new Date(y, m+1, 1);
+  }
+  return {dias, avos: Math.min(avos,12)};
+}
+
+function calcRow(r){
+  const subRepres = parseFloat(r.subRepres) || 0;
+  const subVenc = parseFloat(r.subVenc) || 0;
+  const tioRepres = parseFloat(r.tioRepres) || 0;
+  const tioVenc = parseFloat(r.tioVenc) || 0;
+  const {dias, avos} = calcDiasAvos(r.inicio, r.fim);
+
+  let integral;
+  if(r.fator === "SV"){
+    // diferença entre a representação do substituído e a soma (vencimento + representação) do substituto
+    integral = tioRepres - (subVenc + subRepres);
+  } else if(r.fator === "SVV"){
+    // diferença entre a soma (representação + vencimento) do substituído e a soma (representação + vencimento) do substituto
+    integral = (tioRepres + tioVenc) - (subRepres + subVenc);
+  } else {
+    // CV: diferença simples entre as representações
+    integral = tioRepres - subRepres;
+  }
+  const aReceber = integral * (dias/30);
+  const decimoTerceiro = (integral/12) * avos;
+  const feriasProp = (integral/12) * avos;
+  const tercoFerias = feriasProp/3;
+
+  return {dias, avos, integral, aReceber, decimoTerceiro, feriasProp, tercoFerias};
+}
+
+function fmtMoney(v){
+  if(isNaN(v)) v = 0;
+  return v.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+
+/* ---------------- Tabela de substituições ---------------- */
+function renderRows(){
+  const body = document.getElementById('subst-body');
+  body.innerHTML = "";
+  rowEls = [];
+  rows.forEach((r, i)=>{
+    body.appendChild(buildRowEl(i));
+  });
+  updateTotais();
+}
+
+function makeInput(opts){
+  const inp = document.createElement('input');
+  if(opts.type) inp.type = opts.type;
+  if(opts.step) inp.step = opts.step;
+  if(opts.list) inp.setAttribute('list', opts.list);
+  if(opts.cls) inp.className = opts.cls;
+  if(opts.readOnly) inp.readOnly = true;
+  inp.value = opts.value ?? "";
+  if(opts.oninput) inp.oninput = opts.oninput;
+  return inp;
+}
+function td(el){ const d = document.createElement('td'); d.appendChild(el); return d; }
+function tdMoney(el){
+  const d = document.createElement('td');
+  const wrap = document.createElement('div');
+  wrap.className = 'money-wrap';
+  const prefix = document.createElement('span');
+  prefix.className = 'rs-prefix';
+  prefix.textContent = 'R$';
+  wrap.appendChild(prefix);
+  wrap.appendChild(el);
+  d.appendChild(wrap);
+  return d;
+}
+
+function buildRowEl(i){
+  const r = rows[i];
+  const tr = document.createElement('tr');
+
+  const tdNum = document.createElement('td');
+  tdNum.className = 'col-num';
+  tdNum.textContent = i+1;
+  tr.appendChild(tdNum);
+
+  const selFator = document.createElement('select');
+  ['CV','SV','SVV'].forEach(v=>{
+    const opt = document.createElement('option');
+    opt.value = v; opt.textContent = v; if(r.fator===v) opt.selected = true;
+    selFator.appendChild(opt);
+  });
+  selFator.onchange = ()=>{ rows[i].fator = selFator.value; updateCalcCells(i); scheduleSave(); };
+  tr.appendChild(td(selFator));
+
+  // ---- Substituto ----
+  const inSubMat = makeInput({value:r.subMat, list:'matricula-datalist', oninput:()=>{
+    rows[i].subMat = inSubMat.value;
+    const s = findServidorByMatricula(inSubMat.value);
+    if(s){
+      rows[i].subNome = s.nome; rows[i].subCargo = s.cargo; rows[i].subVenc = s.venc; rows[i].subRepres = s.repres;
+      inSubNome.value = s.nome; inSubCargo.value = s.cargo; inSubVenc.value = s.venc; inSubRepres.value = s.repres;
+    }
+    updateCalcCells(i); scheduleSave();
+  }});
+  tr.appendChild(td(inSubMat));
+
+  const inSubNome = makeInput({value:r.subNome, cls:'wide', list:'servidor-datalist', oninput:()=>{
+    rows[i].subNome = inSubNome.value;
+    const s = findServidorByNome(inSubNome.value);
+    if(s){
+      rows[i].subMat = s.matricula; rows[i].subCargo = s.cargo; rows[i].subVenc = s.venc; rows[i].subRepres = s.repres;
+      inSubMat.value = s.matricula; inSubCargo.value = s.cargo; inSubVenc.value = s.venc; inSubRepres.value = s.repres;
+    }
+    updateCalcCells(i); scheduleSave();
+  }});
+  tr.appendChild(td(inSubNome));
+
+  const inSubCargo = makeInput({value:r.subCargo, list:'cargo-datalist', oninput:()=>{
+    rows[i].subCargo = inSubCargo.value;
+    const c = findCargo(inSubCargo.value);
+    if(c){ rows[i].subVenc = c.venc; rows[i].subRepres = c.repres; inSubVenc.value = c.venc; inSubRepres.value = c.repres; }
+    updateCalcCells(i); scheduleSave();
+  }});
+  tr.appendChild(td(inSubCargo));
+  const inSubVenc = makeInput({value:r.subVenc, type:'number', step:'0.01', cls:'num', oninput:()=>{rows[i].subVenc=parseFloat(inSubVenc.value)||0; updateCalcCells(i); scheduleSave();}});
+  tr.appendChild(tdMoney(inSubVenc));
+  const inSubRepres = makeInput({value:r.subRepres, type:'number', step:'0.01', cls:'num', oninput:()=>{rows[i].subRepres=parseFloat(inSubRepres.value)||0; updateCalcCells(i); scheduleSave();}});
+  tr.appendChild(tdMoney(inSubRepres));
+
+  // ---- Substituído ----
+  const inTioMat = makeInput({value:r.tioMat, list:'matricula-datalist', oninput:()=>{
+    rows[i].tioMat = inTioMat.value;
+    const s = findServidorByMatricula(inTioMat.value);
+    if(s){
+      rows[i].tioNome = s.nome; rows[i].tioCargo = s.cargo; rows[i].tioVenc = s.venc; rows[i].tioRepres = s.repres;
+      inTioNome.value = s.nome; inTioCargo.value = s.cargo; inTioVenc.value = s.venc; inTioRepres.value = s.repres;
+    }
+    updateCalcCells(i); scheduleSave();
+  }});
+  tr.appendChild(td(inTioMat));
+
+  const inTioNome = makeInput({value:r.tioNome, cls:'wide', list:'servidor-datalist', oninput:()=>{
+    rows[i].tioNome = inTioNome.value;
+    const s = findServidorByNome(inTioNome.value);
+    if(s){
+      rows[i].tioMat = s.matricula; rows[i].tioCargo = s.cargo; rows[i].tioVenc = s.venc; rows[i].tioRepres = s.repres;
+      inTioMat.value = s.matricula; inTioCargo.value = s.cargo; inTioVenc.value = s.venc; inTioRepres.value = s.repres;
+    }
+    updateCalcCells(i); scheduleSave();
+  }});
+  tr.appendChild(td(inTioNome));
+
+  const inTioCargo = makeInput({value:r.tioCargo, list:'cargo-datalist', oninput:()=>{
+    rows[i].tioCargo = inTioCargo.value;
+    const c = findCargo(inTioCargo.value);
+    if(c){ rows[i].tioVenc = c.venc; rows[i].tioRepres = c.repres; inTioVenc.value = c.venc; inTioRepres.value = c.repres; }
+    updateCalcCells(i); scheduleSave();
+  }});
+  tr.appendChild(td(inTioCargo));
+  const inTioVenc = makeInput({value:r.tioVenc, type:'number', step:'0.01', cls:'num', oninput:()=>{rows[i].tioVenc=parseFloat(inTioVenc.value)||0; updateCalcCells(i); scheduleSave();}});
+  tr.appendChild(tdMoney(inTioVenc));
+  const inTioRepres = makeInput({value:r.tioRepres, type:'number', step:'0.01', cls:'num', oninput:()=>{rows[i].tioRepres=parseFloat(inTioRepres.value)||0; updateCalcCells(i); scheduleSave();}});
+  tr.appendChild(tdMoney(inTioRepres));
+
+  // ---- Período ----
+  const inInicio = makeInput({value:r.inicio, type:'date', cls:'date', oninput:()=>{rows[i].inicio=inInicio.value; updateCalcCells(i); scheduleSave();}});
+  tr.appendChild(td(inInicio));
+  const inFim = makeInput({value:r.fim, type:'date', cls:'date', oninput:()=>{rows[i].fim=inFim.value; updateCalcCells(i); scheduleSave();}});
+  tr.appendChild(td(inFim));
+
+  const inDias = makeInput({value:'', cls:'num', readOnly:true});
+  tr.appendChild(td(inDias));
+  const inAvos = makeInput({value:'', cls:'num', readOnly:true});
+  tr.appendChild(td(inAvos));
+
+  const tdIntegral = document.createElement('td');
+  const inIntegral = makeInput({value:'', cls:'num', readOnly:true});
+  const moneyWrap = document.createElement('div');
+  moneyWrap.className = 'money-wrap';
+  const rsPrefix = document.createElement('span');
+  rsPrefix.className = 'rs-prefix'; rsPrefix.textContent = 'R$';
+  moneyWrap.appendChild(rsPrefix); moneyWrap.appendChild(inIntegral);
+  const warnBadge = document.createElement('span');
+  warnBadge.className = 'warn-badge'; warnBadge.style.display = 'none'; warnBadge.textContent = 'Diferença negativa';
+  tdIntegral.appendChild(moneyWrap); tdIntegral.appendChild(warnBadge);
+  tr.appendChild(tdIntegral);
+
+  const inAReceber = makeInput({value:'', cls:'num', readOnly:true});
+  tr.appendChild(tdMoney(inAReceber));
+  const inDecimo = makeInput({value:'', cls:'num', readOnly:true});
+  tr.appendChild(tdMoney(inDecimo));
+  const inFerias = makeInput({value:'', cls:'num', readOnly:true});
+  tr.appendChild(tdMoney(inFerias));
+  const inTerco = makeInput({value:'', cls:'num', readOnly:true});
+  tr.appendChild(tdMoney(inTerco));
+
+  // ---- Publicação ----
+  const inDodfNum = makeInput({value:r.dodfNum, oninput:()=>{rows[i].dodfNum=inDodfNum.value; scheduleSave();}});
+  tr.appendChild(td(inDodfNum));
+  const inDodfData = makeInput({value:r.dodfData, type:'date', cls:'date', oninput:()=>{rows[i].dodfData=inDodfData.value; scheduleSave();}});
+  tr.appendChild(td(inDodfData));
+  const inProcesso = makeInput({value:r.processo, cls:'wide', oninput:()=>{rows[i].processo=inProcesso.value; scheduleSave();}});
+  tr.appendChild(td(inProcesso));
+
+  // ---- Ações ----
+  const tdAcoes = document.createElement('td');
+  tdAcoes.className = 'col-acoes';
+  const acoesWrap = document.createElement('div');
+  acoesWrap.className = 'acoes-cell';
+  const btnPrint = document.createElement('button');
+  btnPrint.className = 'btn btn-sm'; btnPrint.title = 'Imprimir'; btnPrint.textContent = '🖨️';
+  btnPrint.onclick = ()=> printRow(i);
+  const btnDel = document.createElement('button');
+  btnDel.className = 'btn btn-sm btn-danger'; btnDel.title = 'Excluir linha'; btnDel.textContent = '✕';
+  btnDel.onclick = ()=> removeRow(i);
+  acoesWrap.appendChild(btnPrint); acoesWrap.appendChild(btnDel);
+  tdAcoes.appendChild(acoesWrap);
+  tr.appendChild(tdAcoes);
+
+  rowEls[i] = {inDias, inAvos, inIntegral, inAReceber, inDecimo, inFerias, inTerco, warnBadge};
+  updateCalcCells(i);
+  return tr;
+}
+
+function updateCalcCells(i){
+  const r = rows[i];
+  const c = calcRow(r);
+  const el = rowEls[i];
+  if(!el) return;
+  el.inDias.value = c.dias;
+  el.inAvos.value = c.avos;
+  el.inIntegral.value = fmtMoney(c.integral);
+  el.warnBadge.style.display = c.integral < 0 ? 'block' : 'none';
+  el.inAReceber.value = fmtMoney(c.aReceber);
+  el.inDecimo.value = fmtMoney(c.decimoTerceiro);
+  el.inFerias.value = fmtMoney(c.feriasProp);
+  el.inTerco.value = fmtMoney(c.tercoFerias);
+  updateTotais();
+}
+
+function addRow(){
+  rows.push(blankRow());
+  const body = document.getElementById('subst-body');
+  const i = rows.length - 1;
+  body.appendChild(buildRowEl(i));
+  updateTotais();
+  scheduleSave();
+  setTimeout(()=>{
+    const scroller = document.getElementById('table-scroll');
+    scroller.scrollTop = scroller.scrollHeight;
+  }, 30);
+}
+
+function removeRow(i){
+  if(!confirm('Excluir esta linha de substituição?')) return;
+  rows.splice(i,1);
+  if(rows.length === 0) rows.push(blankRow());
+  renderRows();
+  scheduleSave();
+}
+
+function updateTotais(){
+  const el = document.getElementById('totais');
+  const n = rows.filter(r => r.subNome || r.tioNome).length;
+  let total = 0;
+  rows.forEach(r => { total += calcRow(r).aReceber; });
+  el.innerHTML = `<b>${rows.length}</b> linha(s) — <b>${n}</b> preenchida(s) — total estimado a receber: <b>R$ ${fmtMoney(total)}</b>`;
+}
+
+/* ---------------- Impressão ---------------- */
+/* ---------------- Exportação Excel ---------------- */
+function round2(v){ return Math.round((v + Number.EPSILON) * 100) / 100; }
+
+async function exportarExcel(){
+  if(typeof XLSX === 'undefined' || typeof JSZip === 'undefined'){
+    alert('As bibliotecas de exportação ainda estão carregando. Aguarde alguns segundos e tente novamente.');
+    return;
+  }
+  const headers = [
+    "Nº","Fator",
+    "Matrícula Substituto","Nome Substituto","Cargo Substituto","Vencimento Substituto (R$)","Representação Substituto (R$)",
+    "Matrícula Substituído","Nome Substituído","Cargo Substituído","Vencimento Substituído (R$)","Representação Substituído (R$)",
+    "Início","Fim","Dias","Avos",
+    "Diferença (R$)","Valor a Receber (R$)","13º Proporcional (20607) (R$)","Férias Proporcionais (21480) (R$)","1/3 de Férias (21485) (R$)",
+    "Nº do DODF","Data de Publicação","Nº do Processo"
+  ];
+  const data = [headers];
+  rows.forEach((r,i)=>{
+    const c = calcRow(r);
+    data.push([
+      i+1, r.fator,
+      r.subMat, r.subNome, r.subCargo, round2(parseFloat(r.subVenc)||0), round2(parseFloat(r.subRepres)||0),
+      r.tioMat, r.tioNome, r.tioCargo, round2(parseFloat(r.tioVenc)||0), round2(parseFloat(r.tioRepres)||0),
+      fmtDate(r.inicio), fmtDate(r.fim), c.dias, c.avos,
+      round2(c.integral), round2(c.aReceber), round2(c.decimoTerceiro), round2(c.feriasProp), round2(c.tercoFerias),
+      r.dodfNum, fmtDate(r.dodfData), r.processo
+    ]);
+  });
+
+  const ws = XLSX.utils.aoa_to_sheet(data);
+
+  // formato de moeda (R$) nas colunas monetárias
+  const moneyCols = [5,6,10,11,16,17,18,19,20]; // índices 0-based das colunas acima
+  const range = XLSX.utils.decode_range(ws['!ref']);
+  for(let R = 1; R <= range.e.r; R++){
+    moneyCols.forEach(C=>{
+      const addr = XLSX.utils.encode_cell({r:R, c:C});
+      if(ws[addr]) ws[addr].z = '"R$" #,##0.00';
+    });
+  }
+
+  ws['!cols'] = headers.map(h => ({wch: Math.max(14, Math.min(30, h.length + 2))}));
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Substituições');
+
+  try{
+    // A biblioteca gratuita não grava orientação de página, então geramos o
+    // arquivo normalmente e injetamos a orientação paisagem diretamente no XML interno.
+    const wbout = XLSX.write(wb, {bookType:'xlsx', type:'array'});
+    const zip = await JSZip.loadAsync(wbout);
+    const sheetPath = 'xl/worksheets/sheet1.xml';
+    const sheetFile = zip.file(sheetPath);
+    if(sheetFile){
+      let xml = await sheetFile.async('string');
+      const pageXml = '<pageMargins left="0.35" right="0.35" top="0.5" bottom="0.5" header="0.2" footer="0.2"/>'
+        + '<pageSetup orientation="landscape" paperSize="9" fitToWidth="1" fitToHeight="0" scale="100"/>';
+      if(xml.includes('<ignoredErrors')){
+        xml = xml.replace('<ignoredErrors', pageXml + '<ignoredErrors');
+      } else {
+        xml = xml.replace('</worksheet>', pageXml + '</worksheet>');
+      }
+      if(xml.includes('<sheetPr')){
+        xml = xml.replace(/<sheetPr([^>]*)\/>/, '<sheetPr$1><pageSetUpPr fitToPage="1"/></sheetPr>');
+      } else {
+        xml = xml.replace(/(<worksheet[^>]*>)/, '$1<sheetPr><pageSetUpPr fitToPage="1"/></sheetPr>');
+      }
+      zip.file(sheetPath, xml);
+      const finalBuf = await zip.generateAsync({type:'blob'});
+      const hoje = new Date().toISOString().slice(0,10);
+      const url = URL.createObjectURL(finalBuf);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `substituicoes-${hoje}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(()=>URL.revokeObjectURL(url), 2000);
+      return;
+    }
+  }catch(e){
+    console.error('Falha ao ajustar orientação de página, exportando sem paisagem forçada:', e);
+  }
+
+  // fallback: exporta normalmente (sem orientação paisagem garantida) se algo falhar acima
+  const hoje = new Date().toISOString().slice(0,10);
+  XLSX.writeFile(wb, `substituicoes-${hoje}.xlsx`, { compression:true });
+}
+
+/* ---------------- Impressão ---------------- */
+function fatorLabel(f){
+  if(f==='SV') return 'SV — desconta vencimento do substituto';
+  if(f==='SVV') return 'SVV — soma vencimento + representação de ambos';
+  return 'CV — diferença simples entre representações';
+}
+
+function printRow(i){
+  const r = rows[i];
+  const c = calcRow(r);
+  const area = document.getElementById('print-area');
+  const hoje = new Date().toLocaleDateString('pt-BR');
+  area.innerHTML = `
+    <div class="doc-title">
+      <h2>TERMO DE SUBSTITUIÇÃO — CARGO COMISSIONADO</h2>
+      <p>Documento gerado em ${hoje}</p>
+    </div>
+    <hr class="doc-rule">
+
+    <div class="doc-section">
+      <h3>Servidor substituto</h3>
+      <div class="doc-grid">
+        <div class="doc-field"><label>Nome</label><div>${escapeHtml(r.subNome)||'—'}</div></div>
+        <div class="doc-field"><label>Matrícula</label><div>${escapeHtml(r.subMat)||'—'}</div></div>
+        <div class="doc-field"><label>Cargo</label><div>${escapeHtml(r.subCargo)||'—'}</div></div>
+        <div class="doc-field"><label>Vencimento</label><div>R$ ${fmtMoney(parseFloat(r.subVenc)||0)}</div></div>
+        <div class="doc-field"><label>Representação</label><div>R$ ${fmtMoney(parseFloat(r.subRepres)||0)}</div></div>
+      </div>
+    </div>
+
+    <div class="doc-section">
+      <h3>Servidor substituído</h3>
+      <div class="doc-grid">
+        <div class="doc-field"><label>Nome</label><div>${escapeHtml(r.tioNome)||'—'}</div></div>
+        <div class="doc-field"><label>Matrícula</label><div>${escapeHtml(r.tioMat)||'—'}</div></div>
+        <div class="doc-field"><label>Cargo</label><div>${escapeHtml(r.tioCargo)||'—'}</div></div>
+        <div class="doc-field"><label>Vencimento</label><div>R$ ${fmtMoney(parseFloat(r.tioVenc)||0)}</div></div>
+        <div class="doc-field"><label>Representação</label><div>R$ ${fmtMoney(parseFloat(r.tioRepres)||0)}</div></div>
+      </div>
+    </div>
+
+    <div class="doc-section">
+      <h3>Período da substituição</h3>
+      <div class="doc-grid">
+        <div class="doc-field"><label>Início</label><div>${fmtDate(r.inicio)}</div></div>
+        <div class="doc-field"><label>Fim</label><div>${fmtDate(r.fim)}</div></div>
+        <div class="doc-field"><label>Dias</label><div>${c.dias}</div></div>
+        <div class="doc-field"><label>Avos (13º/férias)</label><div>${c.avos}</div></div>
+        <div class="doc-field full"><label>Fator</label><div>${fatorLabel(r.fator)}</div></div>
+      </div>
+    </div>
+
+    <div class="doc-section">
+      <h3>Valores apurados</h3>
+      <div class="doc-valores">
+        <div class="card"><label>Diferença</label><div>R$ ${fmtMoney(c.integral)}</div></div>
+        <div class="card"><label>Valor a receber</label><div>R$ ${fmtMoney(c.aReceber)}</div></div>
+        <div class="card"><label>13º proporcional (20607)</label><div>R$ ${fmtMoney(c.decimoTerceiro)}</div></div>
+        <div class="card"><label>Férias proporcionais (21480)</label><div>R$ ${fmtMoney(c.feriasProp)}</div></div>
+        <div class="card"><label>1/3 de férias (21485)</label><div>R$ ${fmtMoney(c.tercoFerias)}</div></div>
+      </div>
+    </div>
+
+    <div class="doc-section">
+      <h3>Publicação</h3>
+      <div class="doc-grid">
+        <div class="doc-field"><label>DODF nº</label><div>${escapeHtml(r.dodfNum)||'—'}</div></div>
+        <div class="doc-field"><label>Data de publicação</label><div>${fmtDate(r.dodfData)}</div></div>
+        <div class="doc-field full"><label>Nº do processo</label><div>${escapeHtml(r.processo)||'—'}</div></div>
+      </div>
+    </div>
+
+    <div class="doc-sign">
+      <div class="line">Servidor substituto</div>
+      <div class="line">Chefia imediata / Setor de Gestão de Pessoas</div>
+    </div>
+  `;
+  window.print();
+}
+
+/* ---------------- Utilidades ---------------- */
+function fmtDate(iso){
+  if(!iso) return '—';
+  const [y,m,d] = iso.split('-');
+  if(!y||!m||!d) return iso;
+  return `${d}/${m}/${y}`;
+}
+function escapeAttr(s){
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+}
+function escapeHtml(s){
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+/* ---------------- Início ---------------- */
+/* Não chama loadState() aqui — quem chama é o script de módulo abaixo,
+   depois de confirmar o login e disponibilizar as funções de nuvem. */
+</script>
+
+<script type="module">
+  import { exigirLogin, checkConnection, observarLogin, logout, obterEstadoModulo, salvarEstadoModulo } from '../assets/firebase-init.js';
+
+  // Disponibiliza as funções de nuvem para o script principal (que não é um módulo) usar
+  window.obterEstadoModulo = obterEstadoModulo;
+  window.salvarEstadoModulo = salvarEstadoModulo;
+
+  exigirLogin((usuario) => {
+    console.log('Logado como', usuario.email);
+    loadState(); // só carrega os dados depois de confirmar o login
+  });
+
+  checkConnection().then((ok) => {
+    const dot = document.getElementById('conn-dot');
+    const text = document.getElementById('conn-text');
+    if (ok) { dot.classList.add('ok'); text.textContent = 'conectado ao banco de dados'; }
+    else { text.textContent = 'sem conexão — configure assets/firebase-config.js'; }
+  });
+
+  observarLogin((usuario) => {
+    if (usuario) {
+      document.getElementById('login-info').style.display = 'flex';
+      document.getElementById('login-text').textContent = usuario.email;
+    }
+  });
+
+  document.getElementById('btn-sair').addEventListener('click', async (e) => {
+    e.preventDefault();
+    await logout();
+    window.location.reload();
+  });
+</script>
+</body>
+</html>
